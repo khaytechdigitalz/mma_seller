@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
+  <g clip-path="url(#clip0_31289_24911)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M7.333.583a6.75 6.75 0 104.213 12.022l2.59 2.592a.75.75 0 001.062-1.06l-2.591-2.592A6.75 6.75 0 007.334.583zm0 1.5a5.25 5.25 0 110 10.5 5.25 5.25 0 010-10.5z" fill="currentColor"/>
+  </g>
+  <defs>
+    <clipPath id="clip0_31289_24911">
+      <path fill="currentColor" d="M0 0H16V16H0z"/>
+    </clipPath>
+  </defs>
+</svg>

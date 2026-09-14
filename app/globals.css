@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+@theme {
+  --font-public-sans: var(--font-public-sans);
+  --font-urbanist: var(--font-urbanist);
+  --font-dm-sans: var(--font-dm-sans);
+
+  --color-accent-1: #a0e2e0;
+  --color-accent-2: #ede9fe;
+  --color-accent-3: #ffc091;
+  --color-accent-4: #ffd6ef;
+  --color-accent-5: #92bdf5;
+  --color-accent-6: #fab851;
+  --color-accent-7: #9ee872;
+
+  --color-light-primary-text: #212529;
+  --color-light-secondary-text: #495057;
+  --color-light-disabled-text: #919eab;
+
+  --color-dark-primary-text: #ffffff;
+  --color-dark-secondary-text: #919eab;
+  --color-dark-disabled-text: #637381;
+
+  /* Updated Primary Palette (Purple Theme) */
+  --color-primary-lighter: #ede9fe;
+  --color-primary-light: #a78bfa;
+  --color-primary: #7c3aed;
+  --color-primary-dark: #6d28d9;
+  --color-primary-darker: #5b21b6;
+  --color-primary-alpha-16: rgba(124, 58, 237, 0.16);
+
+  --color-secondary-lighter: #d6e4ff;
+  --color-secondary-light: #84a9ff;
+  --color-secondary: #3366ff;
+  --color-secondary-dark: #1939b7;
+  --color-secondary-darker: #091a7a;
+
+  --color-info-lighter: #d0f2ff;
+  --color-info-light: #74caff;
+  --color-info: #1890ff;
+  --color-info-dark: #0c53b7;
+  --color-info-darker: #04297a;
+
+  --color-success-lighter: #e9fcd4;
+  --color-success-light: #aaf27f;
+  --color-success: #54d62c;
+  --color-success-dark: #229a16;
+  --color-success-darker: #08660d;
+  --color-success-alpha-16: rgba(84, 214, 44, 0.16);
+
+  --color-warning-lighter: #fff7cd;
+  --color-warning-light: #ffe16a;
+  --color-warning: #ffc107;
+  --color-warning-dark: #b78103;
+  --color-warning-darker: #7a4f01;
+  --color-warning-alpha-16: rgba(255, 193, 7, 0.16);
+
+  --color-error-lighter: #fcd1ca;
+  --color-error-light: #ef6168;
+  --color-error: #cb0233;
+  --color-error-dark: #ae013c;
+  --color-error-darker: #920140;
+  --color-error-alpha-16: rgba(255, 72, 66, 0.16);
+
+  --color-gray-100: #f9fafb;
+  --color-gray-200: #f4f6f8;
+  --color-gray-300: #dfe3e8;
+  --color-gray-400: #c4cdd5;
+  --color-gray-500: #919eab;
+  --color-gray-600: #637381;
+  --color-gray-700: #454f5b;
+  --color-gray-800: #212b36;
+  --color-gray-900: #161c24;
+
+  --shadow-light-z-1: 0px 1px 2px 0px rgba(145, 158, 171, 0.12);
+  --shadow-light-z-8: 0px 8px 16px 0px rgba(145, 158, 171, 0.12);
+  --shadow-light-z-12: 0px 12px 24px -4px rgba(145, 158, 171, 0.12);
+  --shadow-light-z-16: 0px 16px 32px -4px rgba(145, 158, 171, 0.12);
+  --shadow-light-z-20: 0px 20px 40px -4px rgba(145, 158, 171, 0.12);
+  --shadow-light-z-24: 0px 24px 48px 0px rgba(145, 158, 171, 0.12);
+
+  --shadow-dark-z-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.12);
+  --shadow-dark-z-8: 0px 8px 16px 0px rgba(0, 0, 0, 0.12);
+  --shadow-dark-z-12: 0px 12px 24px -4px rgba(0, 0, 0, 0.12);
+  --shadow-dark-z-16: 0px 16px 32px -4px rgba(0, 0, 0, 0.12);
+  --shadow-dark-z-20: 0px 20px 40px -4px rgba(0, 0, 0, 0.12);
+  --shadow-dark-z-24: 0px 24px 48px 0px rgba(0, 0, 0, 0.12);
+
+  --shadow-color-primary: 0px 6px 15px 0px rgba(124, 58, 237, 0.16);
+  --shadow-color-secondary: 0px 8px 16px 0px rgba(51, 102, 255, 0.24);
+  --shadow-color-info: 0px 8px 16px 0px rgba(24, 144, 255, 0.24);
+  --shadow-color-success: 0px 8px 16px 0px rgba(84, 214, 44, 0.24);
+  --shadow-color-warning: 0px 8px 16px 0px rgba(255, 193, 7, 0.24);
+  --shadow-color-error: 0px 8px 16px 0px rgba(255, 72, 66, 0.24);
+
+  --radius-5xl: 3rem;
+
+  --animate-fadeInDown: fadeInDown 700ms ease-in-out 0s 1 normal none running;
+  --animate-marquee: marquee-animation 20s linear infinite;
+  --animate-bounce: bounce 1.4s infinite ease-in-out both;
+
+  @keyframes fadeInDown {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, -100%, 0);
+    }
+    100% {
+      opacity: 1;
+      transform: translateZ(0);
+    }
+  }
+
+  @keyframes marquee-animation {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes bounce {
+    0%,
+    80%,
+    100% {
+      transform: scale(0);
+    }
+    40% {
+      transform: scale(1);
+    }
+  }
+}
+
+button {
+  @apply cursor-pointer;
+}
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(145, 158, 171, 0.4);
+    border-radius: 10px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(145, 158, 171, 0.6);
+  }
+}
+
+@utility custom-scrollbar-white {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 10px;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: #a78bfa;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #a78bfa;
+  }
+}
+
+@utility custom-scrollbar-gray {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 10px;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: #c4cdd5;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #919eab;
+  }
+}
+
+/* React Day Picker Customization */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: var(--color-primary);
+  --rdp-background-color: var(--color-primary-lighter);
+  margin: 0;
+}
+.rdp-day_selected:not([disabled]),
+.rdp-day_selected:focus:not([disabled]),
+.rdp-day_selected:active:not([disabled]),
+.rdp-day_selected:hover:not([disabled]) {
+  background-color: var(--rdp-accent-color);
+  color: white;
+  font-weight: bold;
+}
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  background-color: var(--color-gray-100);
+  color: black;
+}
+.rdp-caption_label {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-gray-900);
+}
+.rdp-nav_button_previous,
+.rdp-nav_button_next {
+  color: var(--color-gray-700);
+}
+.rdp-head_cell {
+  font-weight: 500;
+  color: var(--color-gray-500);
+  font-size: 0.875rem;
+}
