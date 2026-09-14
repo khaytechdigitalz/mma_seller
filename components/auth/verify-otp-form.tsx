@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -10,7 +10,9 @@ import { apiClient } from "@/lib/axios";
 import { handleApiError } from "@/lib/apiHelper";
 import { Logo } from "@/components/ui/logo";
 
-export function ForgotPasswordOTPForm() {
+// Renamed the original component to an inner component. It still uses
+// useSearchParams(), so it still needs a Suspense boundary above it.
+function ForgotPasswordOTPFormInner() {
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -19,14 +21,12 @@ export function ForgotPasswordOTPForm() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
 
-  // Auto-focus the first OTP box on load
   useEffect(() => {
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
   }, []);
 
-  // Handle box-by-box input change
   const handleChange = (index: number, value: string) => {
     if (isNaN(Number(value))) return;
 
@@ -39,14 +39,12 @@ export function ForgotPasswordOTPForm() {
     }
   };
 
-  // Handle keyboard backspace navigation
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[index] && index > 0 && inputRefs.current[index - 1]) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  // Handle pasting full 6-digit OTP code
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").trim().slice(0, 6);
@@ -98,12 +96,11 @@ export function ForgotPasswordOTPForm() {
 
   return (
     <div>
-      {/* Centered Logos & Illustration */}
       <div className="flex flex-col items-center text-center mb-8">
         <Link href="/" className="mb-8 flex justify-center">
-          <Logo/>
+          <Logo />
         </Link>
-         
+
         <h1 className="text-2xl font-public-sans font-bold text-light-primary-text mb-2">
           Verify OTP Code
         </h1>
@@ -113,7 +110,6 @@ export function ForgotPasswordOTPForm() {
         </p>
       </div>
 
-      {/* 6-Box OTP Form */}
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="flex items-center justify-center gap-2 sm:gap-3">
           {otp.map((digit, idx) => (
@@ -161,5 +157,25 @@ export function ForgotPasswordOTPForm() {
         </Link>
       </p>
     </div>
+  );
+}
+
+// Simple fallback shown while the client bailout resolves. Feel free to
+// swap this for a skeleton that matches the form's dimensions.
+function ForgotPasswordOTPFormFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <span className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+// This is the component you actually import and render elsewhere. It wraps
+// the part that reads search params in a Suspense boundary.
+export function ForgotPasswordOTPForm() {
+  return (
+    <Suspense fallback={<ForgotPasswordOTPFormFallback />}>
+      <ForgotPasswordOTPFormInner />
+    </Suspense>
   );
 }

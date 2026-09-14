@@ -115,16 +115,7 @@ export default function Page() {
         withdrawals={withdrawals}
         pagination={pagination}
         loading={loading}
-        selectedStatus={selectedStatus}
-        selectedSeller={selectedSeller}
-        onStatusChange={(status) => {
-          setSelectedStatus(status);
-          setPage(1);
-        }}
-        onSellerChange={(seller) => {
-          setSelectedSeller(seller);
-          setPage(1);
-        }}
+       
         onPageChange={(newPage) => setPage(newPage)}
         onSearchChange={(val) => {
           setSearchRef(val);

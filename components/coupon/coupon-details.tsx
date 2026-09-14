@@ -4,7 +4,6 @@ import React from "react";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import CouponInfo from "./coupon-info";
 
 export default function CouponDetails() {
   const params = useParams();
@@ -21,7 +20,6 @@ export default function CouponDetails() {
       </div>
 
       {/* Coupon Information + Coupon Products */}
-      <CouponInfo />
     </div>
   );
 }
