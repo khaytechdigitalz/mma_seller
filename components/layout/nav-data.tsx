@@ -124,6 +124,7 @@ export const navItems: NavItem[] = [
       },
     ],
   },
+  /*
   {
     label: "Category",
     category: "PROMOTIONAL DEALS",
@@ -135,6 +136,7 @@ export const navItems: NavItem[] = [
       }, 
     ],
   }, 
+  */
   {
     label: "Category",
     category: "HELP & SUPPORT",

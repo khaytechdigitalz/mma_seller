@@ -25,6 +25,8 @@ export interface TopState {
 
 export interface RecentOrderItem {
   order_no: string;
+  sub_order_no: string;
+  order_id: string;
   id: number;
   user_id: number;
   total_amount: string;

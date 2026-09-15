@@ -19,6 +19,7 @@ export interface OrderUser {
 export interface OrderItem {
   id: number;
   order_id: number;
+  sub_order_no: string;
   product_id: number;
   seller_id: number;
   product_name: string;

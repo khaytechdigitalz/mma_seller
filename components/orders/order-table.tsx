@@ -31,12 +31,18 @@ interface OrderItem {
 interface OrderRecord {
   id: number;
   order_no: string;
+  sub_order_no: string;
   user_id: number;
   seller_id: number;
   order_status: string;
   payment_status: string;
   total_amount: string;
   created_at: string;
+  master_order: {
+    payment_status: string;
+    payment_method: string;
+    order_no: string;
+  } | null;
   user: {
     id: number;
     name: string;
@@ -244,7 +250,7 @@ export default function OrderTable() {
                   />
                 </TableCell>
                 <TableCell className="font-semibold text-sm text-light-primary-text whitespace-nowrap">
-                  {order.order_no}
+                  {order.sub_order_no}
                 </TableCell>
                 <TableCell className="text-sm text-light-secondary-text whitespace-nowrap">
                   {order.user?.name || "N/A"}
@@ -257,7 +263,7 @@ export default function OrderTable() {
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   <Badge variant={getPaymentBadgeVariant(order.payment_status)}>
-                    {order.payment_status}
+                    {order.master_order?.payment_status}
                   </Badge>
                 </TableCell>
                 <TableCell className="whitespace-nowrap">

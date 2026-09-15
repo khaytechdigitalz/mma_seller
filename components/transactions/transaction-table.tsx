@@ -20,17 +20,31 @@ import SearchInput from "../common/search-input";
 import { apiClient } from "@/lib/axios";
 import { Eye } from "@/icons";
 
+export interface MasterOrder {
+  id: number;
+  order_no: string;
+  transaction_ref: string;
+  payment_status: string;
+  payment_method: string;
+  total_amount: number;
+  created_at: string;
+}
+
 export interface Transaction {
   id: number;
   order_id: number;
   user_id: number;
   transaction_ref: string;
+  sub_order_no: string;
+  order_status: string;
+  shipping_fee: string;
   payment_gateway: string;
   amount: string;
   fee: number;
   total_amount: number;
   tax: number;
   currency: string;
+  master_order?: MasterOrder;
   status: "successful" | "pending" | "failed" | "refunded" | string;
   gateway_response?: any;
   created_at: string;
@@ -152,7 +166,7 @@ export default function TransactionTable() {
     transactions.length > 0 && selectedRows.length === transactions.length;
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status) {
       case "successful":
         return <Badge variant="success">Successful</Badge>;
       case "pending":
@@ -279,7 +293,7 @@ export default function TransactionTable() {
             </TableRow>
           ) : (
             transactions.map((item) => {
-              const gatewayKey = item.payment_gateway.toLowerCase();
+              const gatewayKey = item.payment_gateway ?? null;
               const logoSrc = gatewayLogos[gatewayKey];
 
               return (
@@ -296,16 +310,16 @@ export default function TransactionTable() {
                     />
                   </TableCell>
                   <TableCell className="font-normal text-sm text-light-secondary-text whitespace-nowrap">
-                    {item.transaction_ref}
+                    {item.master_order?.transaction_ref}
                   </TableCell>
                   <TableCell className="text-sm text-light-secondary-text whitespace-nowrap">
-                    {item.order?.order_no || "N/A"}
+                    {item.sub_order_no || "N/A"}
                   </TableCell>
                   <TableCell className="text-sm font-semibold text-light-primary-text whitespace-nowrap">
                     {formatAmount(item.total_amount, item.currency)}
                   </TableCell>
                   <TableCell className="text-sm whitespace-nowrap text-light-secondary-text">
-                    {formatAmount(item.fee, item.currency)}
+                    {formatAmount(item.shipping_fee, item.currency)}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -321,7 +335,7 @@ export default function TransactionTable() {
                         </div>
                       )}
                       <span className="text-light-primary-text text-sm">
-                        {item.payment_gateway}
+                        {item.master_order?.payment_method}
                       </span>
                     </div>
                   </TableCell>
@@ -329,7 +343,7 @@ export default function TransactionTable() {
                     {item.user?.email || "N/A"}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    {getStatusBadge(item.status)}
+                    {getStatusBadge(item.order_status)}
                   </TableCell>
                   <TableCell className="text-sm text-light-secondary-text whitespace-nowrap">
                     {formatDate(item.created_at)}

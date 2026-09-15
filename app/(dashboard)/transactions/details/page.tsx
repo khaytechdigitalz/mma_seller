@@ -2,45 +2,44 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   ArrowLeft, 
   Loader2, 
   User, 
-  CreditCard, 
   ShoppingBag, 
   Code2, 
   Calendar, 
   Mail, 
   MapPin, 
-  Receipt 
+  Receipt,
+  Store
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/axios";
 
-export interface TransactionDetail {
+export interface MasterOrder {
   id: number;
-  order_id: number;
+  order_no: string;
   user_id: number;
+  delivery_agent_id?: number | null;
+  order_status: string;
+  payment_status: string;
+  payment_method: string;
   transaction_ref: string;
-  payment_gateway: string;
-  amount: string;
-  fee: number;
-  total_amount: number;
-  tax: number;
-  currency: string;
-  status: string;
-  gateway_response?: {
-    status?: boolean;
-    message?: string;
-    data?: {
-      channel?: string;
-      ip_address?: string;
-      gateway_response?: string;
-      [key: string]: any;
-    };
-    [key: string]: any;
-  };
+  subtotal: string;
+  tax_amount: string;
+  shipping_cost: string;
+  discount_amount: string;
+  total_amount: string;
+  shipping_country: string;
+  shipping_state: string;
+  shipping_city?: string | null;
+  shipping_zip?: string | null;
+  shipping_address: string;
+  billing_address?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
   user?: {
@@ -49,35 +48,51 @@ export interface TransactionDetail {
     email: string;
     phone?: string | null;
   };
-  order?: {
+}
+
+export interface OrderItem {
+  id: number;
+  order_id: number;
+  vendor_order_id: number;
+  product_id: number;
+  seller_id: number;
+  unit_price: string;
+  quantity: number;
+  tax: string;
+  discount: string;
+  total_price: string;
+  variation_options?: any;
+  delivery_status: string;
+  product?: {
     id: number;
-    order_no: string;
-    order_status: string;
-    payment_status: string;
-    payment_method: string;
-    subtotal: string;
-    tax_amount: string;
-    shipping_cost: string;
-    discount_amount: string;
-    total_amount: string;
-    shipping_address?: {
-      first_name?: string;
-      last_name?: string;
-      address?: string;
-      city?: string;
-      state?: string;
-      country?: string;
-      phone?: string;
-    };
-    items?: Array<{
-      id: number;
-      product_name: string;
-      sku: string;
-      unit_price: string;
-      quantity: number;
-      total_price: string;
-    }>;
+    name: string;
+    sku: string;
+    thumbnail: string;
   };
+}
+
+export interface Seller {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface TransactionDetail {
+  id: number;
+  order_id: number;
+  user_id: number;
+  seller_id: number;
+  sub_order_no: string;
+  subtotal: string;
+  shipping_fee: string;
+  total_amount: string;
+  order_status: string;
+  currency?: string;
+  created_at: string;
+  updated_at: string;
+  master_order?: MasterOrder;
+  items?: OrderItem[];
+  seller?: Seller;
 }
 
 export default function TransactionDetailsPage() {
@@ -121,11 +136,15 @@ export default function TransactionDetailsPage() {
     switch (status?.toLowerCase()) {
       case "successful":
       case "paid":
-        return <Badge variant="success">Successful</Badge>;
+      case "shipped":
+      case "delivered":
+        return <Badge variant="success">{status}</Badge>;
       case "pending":
-        return <Badge variant="warning">Pending</Badge>;
+      case "processing":
+        return <Badge variant="warning">{status}</Badge>;
       case "failed":
-        return <Badge variant="error">Failed</Badge>;
+      case "cancelled":
+        return <Badge variant="error">{status}</Badge>;
       default:
         return <Badge variant="default">{status}</Badge>;
     }
@@ -170,6 +189,9 @@ export default function TransactionDetailsPage() {
     );
   }
 
+  const masterOrder = transaction.master_order;
+  const customer = masterOrder?.user;
+
   return (
     <div className="space-y-6 max-w-full mx-auto">
       {/* Header Bar */}
@@ -184,11 +206,11 @@ export default function TransactionDetailsPage() {
             <ArrowLeft className="size-5 text-gray-600" />
           </Button>
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900">
-                {transaction.transaction_ref}
+                {masterOrder?.transaction_ref || transaction.sub_order_no}
               </h1>
-              {getStatusBadge(transaction.status)}
+              {getStatusBadge(masterOrder?.payment_status || transaction.order_status)}
             </div>
             <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
               <Calendar className="size-3.5" /> Transacted on {formatDate(transaction.created_at)}
@@ -196,119 +218,107 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
         <div className="text-left sm:text-right">
-          <span className="text-xs text-gray-400 font-medium block">Total Paid</span>
+          <span className="text-xs text-gray-400 font-medium block">Sub-Order Total</span>
           <span className="text-2xl font-extrabold text-gray-900">
-            {formatCurrency(transaction.total_amount, transaction.currency)}
+            {formatCurrency(transaction.total_amount, transaction.currency || "NGN")}
           </span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2/3): Payment Breakdown & Order Items */}
+        {/* Left Column (2/3): Financial Breakdown & Order Items */}
         <div className="lg:col-span-2 space-y-6">
           {/* Payment Summary */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
             <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Receipt className="size-5 text-primary" /> Payment Breakdown
+              <Receipt className="size-5 text-primary" /> Financial Breakdown
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-xl mb-4 text-sm">
               <div>
-                <span className="text-xs text-gray-400 block">Base Amount</span>
+                <span className="text-xs text-gray-400 block">Subtotal</span>
                 <span className="font-semibold text-gray-800">
-                  {formatCurrency(transaction.amount, transaction.currency)}
+                  {formatCurrency(transaction.subtotal, transaction.currency || "NGN")}
                 </span>
               </div>
               <div>
-                <span className="text-xs text-gray-400 block">Gateway Fee</span>
+                <span className="text-xs text-gray-400 block">Shipping Fee</span>
                 <span className="font-semibold text-gray-800">
-                  {formatCurrency(transaction.fee, transaction.currency)}
+                  {formatCurrency(transaction.shipping_fee, transaction.currency || "NGN")}
                 </span>
               </div>
               <div>
-                <span className="text-xs text-gray-400 block">Tax</span>
-                <span className="font-semibold text-gray-800">
-                  {formatCurrency(transaction.tax, transaction.currency)}
+                <span className="text-xs text-gray-400 block">Payment Method</span>
+                <span className="font-semibold text-primary uppercase">
+                  {masterOrder?.payment_method || "N/A"}
                 </span>
               </div>
               <div>
-                <span className="text-xs text-gray-400 block">Gateway</span>
-                <span className="font-semibold text-primary">
-                  {transaction.payment_gateway}
+                <span className="text-xs text-gray-400 block">Payment Status</span>
+                <span className="font-semibold capitalize text-gray-800">
+                  {masterOrder?.payment_status || "N/A"}
                 </span>
               </div>
             </div>
+          </div>
 
-            {/* Gateway Response Details */}
-            {transaction.gateway_response && (
-              <div className="mt-4">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Gateway Verification Response
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-gray-900 text-gray-200 p-4 rounded-xl font-mono">
-                  <div>
-                    <span className="text-gray-500 block">Channel</span>
-                    <span>{transaction.gateway_response?.data?.channel || "N/A"}</span>
+          {/* Order Items */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <ShoppingBag className="size-5 text-primary" /> Sub-Order Items ({transaction.sub_order_no})
+              </h2>
+              <Badge variant="info" className="capitalize">
+                {transaction.order_status}
+              </Badge>
+            </div>
+
+            <div className="divide-y divide-gray-100">
+              {transaction.items?.map((item) => (
+                <div key={item.id} className="py-3 flex items-center justify-between gap-4 text-sm">
+                  <div className="flex items-center gap-3">
+                    {item.product?.thumbnail && (
+                      <div className="size-12 relative rounded-lg overflow-hidden shrink-0 border border-gray-100">
+                        <Image
+                          src={`/${item.product.thumbnail}`}
+                          alt={item.product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-gray-800">{item.product?.name || "Product Name"}</p>
+                      <p className="text-xs text-gray-400">
+                        SKU: {item.product?.sku || "N/A"} | Qty: {item.quantity}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-500 block">IP Address</span>
-                    <span>{transaction.gateway_response?.data?.ip_address || "N/A"}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Message</span>
-                    <span className="text-emerald-400">
-                      {transaction.gateway_response?.message || "Verified"}
-                    </span>
+                  <div className="text-right">
+                    <p className="font-medium text-gray-900">
+                      {formatCurrency(item.total_price, transaction.currency || "NGN")}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {formatCurrency(item.unit_price, transaction.currency || "NGN")} / unit
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
 
-          {/* Order Details & Items */}
-          {transaction.order && (
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <ShoppingBag className="size-5 text-primary" /> Order Items ({transaction.order.order_no})
-                </h2>
-                <Badge variant="info" className="capitalize">
-                  {transaction.order.order_status}
-                </Badge>
-              </div>
-
-              <div className="divide-y divide-gray-100">
-                {transaction.order.items?.map((item) => (
-                  <div key={item.id} className="py-3 flex items-center justify-between gap-4 text-sm">
-                    <div>
-                      <p className="font-semibold text-gray-800">{item.product_name}</p>
-                      <p className="text-xs text-gray-400">SKU: {item.sku} | Qty: {item.quantity}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">
-                        {formatCurrency(item.total_price, transaction.currency)}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {formatCurrency(item.unit_price, transaction.currency)} / unit
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Raw JSON Payload */}
+          {/* Raw JSON Payload 
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
             <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <Code2 className="size-5 text-primary" /> Gateway Payload
+              <Code2 className="size-5 text-primary" /> Raw Sub-Order Data
             </h2>
             <pre className="bg-gray-950 text-emerald-400 p-4 rounded-xl text-xs overflow-x-auto font-mono max-h-60 leading-relaxed">
-              {JSON.stringify(transaction.gateway_response, null, 2)}
+              {JSON.stringify(transaction, null, 2)}
             </pre>
           </div>
+          */}
         </div>
 
-        {/* Right Column (1/3): User & Shipping Info */}
+        {/* Right Column (1/3): Customer & Shipping Info */}
         <div className="space-y-6">
           {/* Customer Card */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs space-y-4">
@@ -318,35 +328,31 @@ export default function TransactionDetailsPage() {
             <div className="space-y-3 text-sm">
               <div>
                 <span className="text-xs text-gray-400 block">Full Name</span>
-                <span className="font-medium text-gray-800">{transaction.user?.name || "N/A"}</span>
+                <span className="font-medium text-gray-800">{customer?.name || "N/A"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="size-4 text-gray-400 shrink-0" />
-                <span className="text-gray-700 truncate">{transaction.user?.email || "N/A"}</span>
+                <span className="text-gray-700 truncate">{customer?.email || "N/A"}</span>
               </div>
             </div>
           </div>
 
           {/* Shipping Address Card */}
-          {transaction.order?.shipping_address && (
+          {masterOrder && (
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs space-y-4">
               <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
                 <MapPin className="size-5 text-primary" /> Shipping Address
               </h2>
               <div className="text-sm text-gray-700 space-y-1">
-                <p className="font-medium text-gray-900">
-                  {transaction.order.shipping_address.first_name}{" "}
-                  {transaction.order.shipping_address.last_name}
-                </p>
-                <p>{transaction.order.shipping_address.address}</p>
+                <p>{masterOrder.shipping_address}</p>
                 <p>
-                  {transaction.order.shipping_address.city},{" "}
-                  {transaction.order.shipping_address.state}
+                  {masterOrder.shipping_city ? `${masterOrder.shipping_city}, ` : ""}
+                  {masterOrder.shipping_state}
                 </p>
-                <p className="text-gray-500">{transaction.order.shipping_address.country}</p>
-                {transaction.order.shipping_address.phone && (
+                <p className="text-gray-500">{masterOrder.shipping_country}</p>
+                {customer?.phone && (
                   <p className="text-xs text-gray-400 pt-2">
-                    Phone: {transaction.order.shipping_address.phone}
+                    Phone: {customer.phone}
                   </p>
                 )}
               </div>
