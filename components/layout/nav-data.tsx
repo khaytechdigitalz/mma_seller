@@ -49,7 +49,7 @@ export const navItems: NavItem[] = [
     items: [
        {
         label: "Manage Store",
-        href: storeid ? `/storefront/details?id=${storeid}` : "/storefront/details",
+        href: "/storefront/details?id=0",
         icon: <StructureIcon className="size-5.5" />,
       },
       {
@@ -58,7 +58,9 @@ export const navItems: NavItem[] = [
         icon: <DeliveryBoxIcon className="size-5.5" />,
         subItems: [
           { label: "All Products", href: "/products" },
-          { label: "Add Product", href: "/products/add" },
+          { label: "Add New Product", href: "/products/add" },
+          { label: "Bulk Upload Product", href: "/products/bulk" },
+          { label: "Draft Products", href: "/products/draft" },
         ],
       },
       {

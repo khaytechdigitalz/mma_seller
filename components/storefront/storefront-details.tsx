@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { apiClient } from "@/lib/axios";
@@ -45,6 +45,40 @@ function StoreAvatar({ logo, name }: StoreAvatarProps) {
   );
 }
 
+function BannerImage({ banner, storeName }: { banner?: string | null; storeName: string }) {
+  const fallbackSrc = `/images/seller/seller-1.png`;
+  const initialSrc = banner
+    ? banner.startsWith("http")
+      ? banner
+      : `${process.env.NEXT_PUBLIC_STORAGE_URL || ""}/${banner}`
+    : fallbackSrc;
+
+  const [imgSrc, setImgSrc] = useState<string>(initialSrc);
+
+  useEffect(() => {
+    setImgSrc(
+      banner
+        ? banner.startsWith("http")
+          ? banner
+          : `${process.env.NEXT_PUBLIC_STORAGE_URL || ""}/${banner}`
+        : fallbackSrc
+    );
+  }, [banner]);
+
+  return (
+    <Image
+      src={imgSrc}
+      alt={`${storeName} Banner`}
+      fill
+      unoptimized={imgSrc.startsWith("http")}
+      className="object-cover opacity-20"
+      onError={() => {
+        if (imgSrc !== fallbackSrc) setImgSrc(fallbackSrc);
+      }}
+    />
+  );
+}
+
 const TAB_OPTIONS = [
   { key: "orders", label: "Orders" },
   { key: "products", label: "Products" },
@@ -54,7 +88,7 @@ const TAB_OPTIONS = [
 
 type TabKey = (typeof TAB_OPTIONS)[number]["key"];
 
-export default function SellerDetails() {
+function SellerDetailsContent() {
   const searchParams = useSearchParams();
   const sellerId = searchParams.get("id");
 
@@ -118,25 +152,25 @@ export default function SellerDetails() {
     {
       title: "Total Orders",
       value: metrics.orders.total_orders_count.toLocaleString(),
-      bgColor: "bg-[#E2F5F4]", // Pastel Teal
+      bgColor: "bg-[#E2F5F4]",
       textColor: "text-gray-900",
     },
     {
       title: "Total Order Value",
-      value: `$${metrics.orders.total_orders_value.toLocaleString()}`,
-      bgColor: "bg-[#FEF8CD]", // Pastel Yellow
+      value: `₦${metrics.orders.total_orders_value.toLocaleString()}`,
+      bgColor: "bg-[#FEF8CD]",
       textColor: "text-gray-900",
     },
     {
       title: "Wallet Balance",
-      value: `$${Number(seller.wallet?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-      bgColor: "bg-[#D6E8FE]", // Pastel Blue
+      value: `₦${Number(seller.wallet?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+      bgColor: "bg-[#D6E8FE]",
       textColor: "text-blue-950",
     },
     {
       title: "Total Refunds",
-      value: `$${metrics.refunds.total_refunds_value.toLocaleString()}`,
-      bgColor: "bg-[#FCE8F3]", // Pastel Pink
+      value: `₦${metrics.refunds.total_refunds_value.toLocaleString()}`,
+      bgColor: "bg-[#FCE8F3]",
       textColor: "text-gray-900",
     },
   ];
@@ -145,24 +179,17 @@ export default function SellerDetails() {
     <div className="space-y-6">
       {/* Top Bar Header */}
       <div className="flex items-center justify-between bg-white rounded-2xl p-4 sm:p-6 border border-gray-100 shadow-sm">
-        <PageHeader title="Seller Profile" backHref="/sellers" className="gap-4" />
-        <Button href={`/sellers/edit-seller?id=${seller.id}`} variant="outline" size="sm">
-          Edit Profile
+        <PageHeader title="Seller Profile" backHref="#" className="gap-4" />
+        <Button href={`/storefront/edit?id=${seller.id}`} variant="outline" size="sm">
+          Edit Storefront
         </Button>
       </div>
 
       {/* Hero Card with Opaque Background Banner */}
       <div className="relative rounded-2xl border border-gray-100 overflow-hidden shadow-sm bg-white">
-        {/* Background Banner Container */}
         <div className="absolute inset-0 z-0">
           {seller.storefront?.banner ? (
-            <Image
-              src={seller.storefront.banner}
-              alt={`${storeName} Banner`}
-              fill
-              unoptimized={seller.storefront.banner.startsWith("http")}
-              className="object-cover opacity-20"
-            />
+            <BannerImage banner={seller.storefront.banner} storeName={storeName} />
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-gray-50 to-gray-100 opacity-60" />
           )}
@@ -255,5 +282,17 @@ export default function SellerDetails() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SellerDetails() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-64 items-center justify-center rounded-2xl bg-white p-6 border border-gray-100 shadow-sm">
+        <p className="animate-pulse text-sm font-medium text-gray-500">Loading profile...</p>
+      </div>
+    }>
+      <SellerDetailsContent />
+    </Suspense>
   );
 }
