@@ -30,13 +30,7 @@ export default function WithdrawOverview({
       maximumFractionDigits: 2,
     })}`;
 
-  const overviewData = [
-    {
-      title: "Total Transactions",
-      value: formatCurrency(widgets?.total_successful_transaction_amount),
-      bgClass: "bg-[rgba(0,171,85,0.12)]",
-      icon: MoneyExchangeIcon,
-    },
+  const overviewData = [ 
     {
       title: "Pending Withdrawals",
       value: formatCurrency(widgets?.pending_withdrawals),
@@ -58,7 +52,7 @@ export default function WithdrawOverview({
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {overviewData.map((item, index) => {
         const IconComponent = item.icon;
         return (

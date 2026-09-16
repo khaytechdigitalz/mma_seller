@@ -48,7 +48,7 @@ export default function UserDropdown() {
       await apiClient.post("/auth/logout");
     } catch (error) {
       // Even if the server call fails, still clear the local session below -
-      // the admin's intent to leave wins over a flaky/expired backend call.
+      // the seller's intent to leave wins over a flaky/expired backend call.
       console.error("Server logout failed, clearing local session anyway", error);
     } finally {
       Cookies.remove("auth_token");
@@ -83,7 +83,7 @@ export default function UserDropdown() {
                   {loading ? "Loading..." : user?.name || "Account"}
                 </span>
                 <span className="text-xs text-text-secondary-text block capitalize">
-                  {user?.type || "Admin"}
+                  {user?.type || "Seller"}
                 </span>
               </span>
               <ChevronDown

@@ -5,7 +5,7 @@ import {
   ShoppingCartIcon,
   AnalyticsIcon,
   TransactionIcon,
-  CuponPercentIcon,
+  PaymentSuccessIcon,
   StructureIcon,
   CustomerSupportIcon,
   UserIcon, 
@@ -150,7 +150,7 @@ export const navItems: NavItem[] = [
   },
   {
     label: "Category",
-    category: "SECURITY",
+    category: "SETTINGS",
     items: [
       {
         label: "Audit Log",
@@ -161,6 +161,11 @@ export const navItems: NavItem[] = [
         label: "My Account",
         href: "/account",
         icon: <UserIcon className="size-5.5" />,
+      },
+      {
+        label: "My Bank",
+        href: "/bank/settings",
+        icon: <PaymentSuccessIcon className="size-5.5" />,
       },
     ],
   }

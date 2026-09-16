@@ -209,12 +209,7 @@ export default function TopProductsTable() {
             <h3 className="text-xl font-bold text-light-primary-text leading-7">
               Top Products List
             </h3>
-
-            <div className="flex items-center gap-3">
-              <Button className="rounded-full bg-teal-700 hover:bg-teal-800 text-white px-6">
-                Export
-              </Button>
-            </div>
+ 
           </div>
 
           <div className="w-full flex justify-between gap-4 items-center flex-wrap xl:flex-nowrap">

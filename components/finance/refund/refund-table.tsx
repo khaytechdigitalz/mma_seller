@@ -139,13 +139,7 @@ export default function RefundTable() {
         <div className="flex justify-between items-center gap-4 mb-6">
           <h3 className="text-xl font-bold text-light-primary-text leading-7">
             Refunds
-          </h3>
-
-          <div className="flex items-center gap-3">
-            <Button className="rounded-full bg-teal-700 hover:bg-teal-800 text-white px-6">
-              Export
-            </Button>
-          </div>
+          </h3> 
         </div>
 
         {/* Metrics Cards */}

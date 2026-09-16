@@ -17,17 +17,11 @@ interface SearchModalProps {
 }
 
 const initialProducts: SearchItem[] = [
-  { id: 1, text: "Wireless Bluetooth Headphones" },
-  { id: 2, text: "USB-C Charging Cable" },
-  { id: 3, text: "Laptop Cooling Pad" },
+  { id: 1, text: "Settings" }, 
 ];
 
 const initialNewItems: SearchItem[] = [
-  { id: 4, text: "Mechanical Keyboard RGB" },
-  { id: 5, text: "Portable Power Bank" },
-  { id: 6, text: "Smart Watch Pro" },
-  { id: 7, text: "Wireless Mouse Ergonomic" },
-  { id: 8, text: "Webcam HD 1080p" },
+  { id: 4, text: "Products" }, 
 ];
 
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
@@ -121,7 +115,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             {filteredProducts.length > 0 && (
               <div className="mb-6">
                 <h4 className="text-sm font-bold text-gray-900 mb-3">
-                  Added Product
+                  Search Module
                   <span className="ml-1.5 text-xs font-normal text-gray-400">
                     ({products.length})
                   </span>

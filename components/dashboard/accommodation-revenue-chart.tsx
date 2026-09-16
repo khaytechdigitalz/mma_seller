@@ -133,7 +133,7 @@ export default function AccommodationRevenueChart({
   if (isLoading) {
     return (
       <DashboardCard
-        title="Accommodation Revenue"
+        title="Transaction Revenue"
         subtitle="Loading chart metrics..."
       >
         <div className="h-[300px] w-full animate-pulse flex items-end justify-between gap-2 pt-12 pb-4 px-4">
@@ -151,8 +151,8 @@ export default function AccommodationRevenueChart({
 
   return (
     <DashboardCard
-      title="Accommodation Revenue"
-      subtitle="(+43%) than last year"
+      title="Transaction Chart"
+      subtitle=""
     >
       <div className="-ml-5 -mb-5">
         <Chart

@@ -14,9 +14,8 @@ import { apiClient } from "@/lib/axios";
 import { handleApiError } from "@/lib/apiHelper";
 import { TwoFaForm } from "@/components/auth/sigin-2fa-form";
 import { Logo } from "@/components/ui/logo";
+import { CreateStorefrontForm } from "@/components/auth/storefront"; 
 
-// Renamed the original component to an inner component. It still uses
-// useSearchParams(), so it still needs a Suspense boundary above it.
 function SigninFormInner() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("from") || "/";
@@ -26,15 +25,17 @@ function SigninFormInner() {
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [requires2Fa, setRequires2Fa] = useState(false);
+  const [twoFaToken, setTwoFaToken] = useState("");
+  const [needsStorefront, setNeedsStorefront] = useState(false);
+  const [storefrontToken, setStorefrontToken] = useState("");
+
   useEffect(() => {
     if (searchParams.get("expired") === "1") {
       toast.error("Your session has expired. Please sign in again.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const [requires2Fa, setRequires2Fa] = useState(false);
-  const [twoFaToken, setTwoFaToken] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,29 +53,42 @@ function SigninFormInner() {
         password,
       });
 
-      const { status, message, requires_2fa, data } = response.data;
+      const responseData = response.data;
+      const { status, message, requires_2fa, storefront, token, user } = responseData;
+      
+      const actualToken = token || responseData.data?.token;
+      const actualUser = user || responseData.data?.user;
+      const actualStorefront = storefront ?? responseData.data?.storefront;
 
-      if (status && requires_2fa) {
-        setTwoFaToken(data?.token || "");
+      if (requires_2fa) {
+        setTwoFaToken(actualToken || "");
         setRequires2Fa(true);
         toast.info(message || "Please enter your 2FA code.");
         return;
       }
 
-      if (status && data?.token) {
-        const { token, user } = data;
-
+      if (actualToken) {
         const cookieExpiry = keepSignedIn ? 30 : 1;
-        Cookies.set("auth_token", token, {
+        Cookies.set("auth_token", actualToken, {
           expires: cookieExpiry,
           secure: true,
           sameSite: "lax",
         });
-        const role: "master" | "seller" = user?.type === "seller" ? "seller" : "master";
-        localStorage.setItem("auth_token", token);
-        localStorage.setItem("user_info", JSON.stringify(user));
+        const role: "master" | "seller" = actualUser?.type === "seller" ? "seller" : "master";
+        localStorage.setItem("auth_token", actualToken);
+        if (actualUser) {
+          localStorage.setItem("user_info", JSON.stringify(actualUser));
+        }
         localStorage.setItem("userRole", role);
         document.cookie = `userRole=${role}; path=/; max-age=31536000`;
+
+        // If storefront is false, show the storefront creation form inline instead of redirecting
+        if (actualStorefront === false) {
+          toast.info(message || "Please create a storefront to continue.");
+          setStorefrontToken(actualToken);
+          setNeedsStorefront(true);
+          return;
+        }
 
         toast.success(message || "Login successful!");
         window.location.href = redirectTo;
@@ -91,6 +105,26 @@ function SigninFormInner() {
 
   if (requires2Fa) {
     return <TwoFaForm token={twoFaToken} keepSignedIn={keepSignedIn} redirectTo={redirectTo} />;
+  }
+
+  // Render the storefront creation form inline if required by the login response
+  if (needsStorefront) {
+    return (
+      <div>
+        <div className="flex flex-col items-center text-center mb-6">
+          <Link href="/" className="mb-6 flex justify-center">
+            <Logo />
+          </Link>
+          <h1 className="text-2xl font-public-sans font-bold text-light-primary-text mb-2">
+            Create Your Storefront
+          </h1>
+          <p className="text-gray-600 font-public-sans text-sm max-w-sm">
+            You need to set up your store before you can access your dashboard.
+          </p>
+        </div>
+        <CreateStorefrontForm token={storefrontToken} />
+      </div>
+    );
   }
 
   return (
@@ -196,8 +230,6 @@ function SigninFormInner() {
   );
 }
 
-// Simple fallback shown while the client bailout resolves. Feel free to
-// swap this for a skeleton that matches the form's dimensions.
 function SigninFormFallback() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -206,9 +238,6 @@ function SigninFormFallback() {
   );
 }
 
-// This is the component you actually import and render elsewhere
-// (e.g. in your page.tsx). It wraps the part that reads search params
-// in a Suspense boundary, which is what Next.js is asking for.
 export function SigninForm() {
   return (
     <Suspense fallback={<SigninFormFallback />}>

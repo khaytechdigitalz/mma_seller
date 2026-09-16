@@ -61,7 +61,6 @@ export default function SalesReportOverview({
         <h2 className="text-xl font-bold text-light-primary-text">
           Sales reports
         </h2>
-        <Button size="xs">Export</Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {salesReportData.map((item, index) => (

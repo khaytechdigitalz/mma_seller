@@ -16,6 +16,8 @@ interface RegisterOTPFormProps {
 export default function RegisterOTPForm({ email: propEmail }: RegisterOTPFormProps) {
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const router = useRouter();
@@ -30,6 +32,17 @@ export default function RegisterOTPForm({ email: propEmail }: RegisterOTPFormPro
       inputRefs.current[0].focus();
     }
   }, []);
+
+  // Handle countdown timer interval for resend link
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   // Handle box-by-box input change
   const handleChange = (index: number, value: string) => {
@@ -64,6 +77,34 @@ export default function RegisterOTPForm({ email: propEmail }: RegisterOTPFormPro
     }
   };
 
+  const handleResendOTP = async () => {
+    if (!email) {
+      toast.error("Missing email parameter. Cannot resend OTP.");
+      return;
+    }
+
+    setResending(true);
+    try {
+      const response = await apiClient.post("/auth/register/resend-otp", {
+        email,
+      });
+
+      const { status, message } = response.data;
+
+      if (status) {
+        toast.success(message || "A new OTP code has been sent to your email.");
+        setCountdown(5); // 60 seconds cooldown timer
+      } else {
+        toast.error(message || "Failed to resend OTP code.");
+      }
+    } catch (error: any) {
+      console.error("Resend OTP error:", error);
+      toast.error(error?.response?.data?.message || "Failed to resend OTP. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const fullOtp = otp.join("");
@@ -81,7 +122,6 @@ export default function RegisterOTPForm({ email: propEmail }: RegisterOTPFormPro
     setLoading(true);
 
     try {
-      // Adjust the endpoint path to match your backend registration verification route if needed
       const response = await apiClient.post("/auth/register/verify", {
         email,
         otp: fullOtp,
@@ -92,7 +132,6 @@ export default function RegisterOTPForm({ email: propEmail }: RegisterOTPFormPro
       if (status) {
         toast.success(message || "Email verified successfully!");
 
-        // If your backend returns an auth token directly after email confirmation, save it
         if (data?.token) {
           Cookies.set("auth_token", data.token, { expires: 7 });
           localStorage.setItem("auth_token", data.token);
@@ -166,7 +205,26 @@ export default function RegisterOTPForm({ email: propEmail }: RegisterOTPFormPro
         </Button>
       </form>
 
-      <p className="mt-10 text-center text-sm text-light-secondary-text">
+      {/* Resend OTP Section */}
+      <div className="mt-6 text-center text-sm text-gray-600">
+        Didn't receive the code?{" "}
+        {countdown > 0 ? (
+          <span className="text-gray-400 font-medium">
+            Resend in {countdown}s
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={handleResendOTP}
+            disabled={resending}
+            className="font-bold text-primary hover:text-primary-dark underline focus:outline-hidden disabled:opacity-50"
+          >
+            {resending ? "Resending..." : "Resend OTP"}
+          </button>
+        )}
+      </div>
+
+      <p className="mt-6 text-center text-sm text-light-secondary-text">
         Back to{" "}
         <Link
           href="/signin"

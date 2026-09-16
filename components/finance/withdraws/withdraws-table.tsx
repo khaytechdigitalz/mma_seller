@@ -164,7 +164,6 @@ export default function WithdrawsTable({
                   />
                 </TableHead>
                 <TableHead>Reference</TableHead>
-                <TableHead>User</TableHead>
                 <TableHead>Bank Account</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Fee</TableHead>
@@ -192,17 +191,7 @@ export default function WithdrawsTable({
                     </TableCell>
                     <TableCell className="font-mono text-xs text-light-secondary-text whitespace-nowrap">
                       {item.reference}
-                    </TableCell>
-                    <TableCell className="text-light-secondary-text whitespace-nowrap">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {item.user?.name || "N/A"}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {item.user?.email || ""}
-                        </p>
-                      </div>
-                    </TableCell>
+                    </TableCell> 
                     <TableCell className="text-light-secondary-text whitespace-nowrap">
                       {item.bank_detail ? (
                         <div>

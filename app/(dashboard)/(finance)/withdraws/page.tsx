@@ -12,6 +12,7 @@ import WithdrawsTable, {
   WithdrawalItem,
   PaginationMeta,
 } from "@/components/finance/withdraws/withdraws-table";
+import WithdrawRequestModal from "@/components/finance/withdraws/withdraws-request";
 import { Option } from "@/components/ui/custom-select";
 import { apiClient } from "@/lib/axios";
 
@@ -45,6 +46,9 @@ export default function Page() {
   const [searchRef, setSearchRef] = useState<string>("");
   const [page, setPage] = useState<number>(1);
   const perPage = 15;
+
+  // Modal Visibility State
+  const [isPayoutOpen, setIsPayoutOpen] = useState(false);
 
   const fetchWithdrawals = useCallback(async () => {
     try {
@@ -98,12 +102,12 @@ export default function Page() {
             Withdrawals
           </h1>
           <div className="flex gap-3">
-            <Button className="rounded-full bg-teal-700 hover:bg-teal-800 text-white px-6">
-              Invoice
-            </Button>
-            <Button className="rounded-full bg-teal-700 hover:bg-teal-800 text-white px-6">
-              Export
-            </Button>
+            <Button
+              onClick={() => setIsPayoutOpen(true)}
+              className="rounded-full bg-teal-700 hover:bg-teal-800 text-white px-6"
+            >
+              Request Payout
+            </Button> 
           </div>
         </div>
 
@@ -115,12 +119,18 @@ export default function Page() {
         withdrawals={withdrawals}
         pagination={pagination}
         loading={loading}
-       
         onPageChange={(newPage) => setPage(newPage)}
         onSearchChange={(val) => {
           setSearchRef(val);
           setPage(1);
         }}
+      />
+
+      {/* Imported Request Payout Modal */}
+      <WithdrawRequestModal
+        isOpen={isPayoutOpen}
+        onClose={() => setIsPayoutOpen(false)}
+        onSuccess={fetchWithdrawals}
       />
     </div>
   );

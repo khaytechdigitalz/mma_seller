@@ -50,10 +50,7 @@ export default function EarningOverview({ widgets, loading }: EarningOverviewPro
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-xl font-bold text-light-primary-text">
           Earnings Overview
-        </h2>
-        <Button className="rounded-full bg-teal-700 hover:bg-teal-800 text-white px-6">
-          Export
-        </Button>
+        </h2> 
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
