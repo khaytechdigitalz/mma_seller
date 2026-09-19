@@ -154,7 +154,7 @@ export default function SalesReportTable({
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-light-secondary-text whitespace-nowrap">
-                  {formatCurrency(item.product.unit_price)}
+                  {formatCurrency(item.product.purchase_price)}
                 </TableCell>
                 <TableCell className="text-sm text-light-secondary-text whitespace-nowrap">
                   {item.total_units_sold}

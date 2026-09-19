@@ -17,6 +17,7 @@ export interface ProductDetail {
   name: string;
   sku: string;
   unit_price: number;
+  purchase_price: number;
   thumbnail: string;
 }
 

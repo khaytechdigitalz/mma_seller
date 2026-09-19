@@ -24,6 +24,7 @@ export interface ProductDetail {
   name: string;
   sku: string;
   unit_price: number | string;
+  purchase_price: number | string;
   thumbnail?: string | null;
 }
 
@@ -209,7 +210,7 @@ export default function TopProductsTable() {
             <h3 className="text-xl font-bold text-light-primary-text leading-7">
               Top Products List
             </h3>
- 
+
           </div>
 
           <div className="w-full flex justify-between gap-4 items-center flex-wrap xl:flex-nowrap">
@@ -295,16 +296,19 @@ export default function TopProductsTable() {
                     <TableCell className="text-sm text-light-secondary-text">
                       <div className="flex items-center gap-2">
                         <div className="size-8 relative rounded bg-gray-100 shrink-0 overflow-hidden border border-gray-200">
-                          <Image
-                            src={thumbnailSrc}
-                            alt={item.product?.name || "Product"}
-                            fill
-                            className="object-cover"
-                             unoptimized
-                           onError={(e) => {
-                            e.currentTarget.src = "/images/customer/user_01.png";
-                          }}
-                          />
+                          {item.product.thumbnail && (
+                            <Image
+                              src={`${process.env.NEXT_PUBLIC_STORAGE_URL}/${item.product.thumbnail}`}
+                              alt={item.product.name}
+                              width={32}
+                              height={32}
+                              className="object-cover size-full"
+                              unoptimized
+                              onError={(e) => {
+                                e.currentTarget.src = "/images/customer/user_01.png";
+                              }}
+                            />
+                          )}
                         </div>
                         <span className="font-medium text-gray-900">
                           {item.product?.name || "N/A"}
@@ -317,14 +321,14 @@ export default function TopProductsTable() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-light-secondary-text">
-                      {formatCurrency(item.product?.unit_price)}
+                      {formatCurrency(item.product?.purchase_price)}
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-gray-900">
                       {item.total_units_sold.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-teal-700">
                       {formatCurrency(item.total_revenue)}
-                    </TableCell> 
+                    </TableCell>
                   </TableRow>
                 );
               })}

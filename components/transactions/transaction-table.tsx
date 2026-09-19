@@ -169,6 +169,8 @@ export default function TransactionTable() {
     switch (status) {
       case "successful":
         return <Badge variant="success">Successful</Badge>;
+      case "paid":
+        return <Badge variant="success">Paid</Badge>;
       case "pending":
         return <Badge variant="warning">Pending</Badge>;
       case "failed":
@@ -270,10 +272,11 @@ export default function TransactionTable() {
             <TableHead>Transaction Ref</TableHead>
             <TableHead>Order No</TableHead>
             <TableHead>Amount</TableHead>
-            <TableHead>Fee</TableHead>
+            <TableHead>Shipping Fee</TableHead>
+            <TableHead>Order Status</TableHead>
+            <TableHead>Payment Status</TableHead>
             <TableHead>Gateway</TableHead>
             <TableHead>User Email</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead>Date</TableHead>
             <TableHead className="pr-6 text-right">Action</TableHead>
           </TableRow>
@@ -321,6 +324,13 @@ export default function TransactionTable() {
                   <TableCell className="text-sm whitespace-nowrap text-light-secondary-text">
                     {formatAmount(item.shipping_fee, item.currency)}
                   </TableCell>
+
+                  <TableCell className="whitespace-nowrap">
+                    {getStatusBadge(item.order_status)}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {getStatusBadge(item.master_order?.payment_status ?? "N/A")}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       {logoSrc && (
@@ -341,9 +351,6 @@ export default function TransactionTable() {
                   </TableCell>
                   <TableCell className="text-sm text-light-secondary-text whitespace-nowrap">
                     {item.user?.email || "N/A"}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {getStatusBadge(item.order_status)}
                   </TableCell>
                   <TableCell className="text-sm text-light-secondary-text whitespace-nowrap">
                     {formatDate(item.created_at)}
