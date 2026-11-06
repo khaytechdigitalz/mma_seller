@@ -14,7 +14,7 @@ import OrderInformation from "@/components/orders/order-details/order-informatio
 import OrderTracking from "@/components/orders/order-details/order-tracking";
 
 import { UpdateOrderStatusModal } from "@/components/orders/order-details/update-order-status-modal";
-import { UpdateOrderItemStatusModal } from "@/components/orders/order-details/update-order-item-status-modal";
+// import { UpdateOrderItemStatusModal } from "@/components/orders/order-details/update-order-item-status-modal";
 
 
 export default function OrderDetails() {
@@ -80,6 +80,7 @@ export default function OrderDetails() {
     <div className="bg-white p-4 sm:p-6 rounded-2xl w-full">
       <div className="pb-4 flex flex-wrap justify-between items-center gap-3">
         <PageHeader title={`Details - ${order.order_no}`} backHref="/orders" />
+        {/* Action Buttons */}
         <div className="flex flex-wrap gap-2.5">
           <Button
             size="xs"
@@ -131,13 +132,14 @@ export default function OrderDetails() {
       />
  
 
-      {/* Endpoint 3: POST /orders/order-items/[id]/update-status */}
+      {/* Endpoint 3: POST /orders/order-items/[id]/update-status 
       <UpdateOrderItemStatusModal
         item={selectedItemForStatusUpdate}
         isOpen={!!selectedItemForStatusUpdate}
         onClose={() => setSelectedItemForStatusUpdate(null)}
         onSuccess={fetchOrderDetails}
       />
+      */}
     </div>
   );
 }

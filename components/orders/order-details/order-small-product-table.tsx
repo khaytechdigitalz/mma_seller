@@ -45,7 +45,7 @@ export default function OrderSmallProductTable({
             <TableHead>Items</TableHead>
             <TableHead>Price</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="pr-6">Action</TableHead>
+            {/*<TableHead className="pr-6">Action</TableHead>*/}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -111,7 +111,7 @@ export default function OrderSmallProductTable({
                     {item.delivery_status?.replace("_", " ") || "N/A"}
                   </Badge>
                 </TableCell>
-
+                  {/* Action Buttons 
                   <TableCell className="pr-6 py-2 whitespace-nowrap">
                     <Button
                       size="xs"
@@ -121,6 +121,7 @@ export default function OrderSmallProductTable({
                       Update Status
                     </Button>
                   </TableCell>
+                  */}
                 </TableRow>
               );
             })
