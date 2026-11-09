@@ -194,7 +194,6 @@ export default function ProductListTable({
             <TableHead>Product</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Price</TableHead>
-            <TableHead>Stock</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right pr-6">Action</TableHead>
           </TableRow>
@@ -218,7 +217,6 @@ export default function ProductListTable({
                 <TableCell><div className="h-4 w-20 bg-gray-200 rounded"></div></TableCell>
                 <TableCell><div className="h-4 w-14 bg-gray-200 rounded"></div></TableCell>
                 <TableCell><div className="h-4 w-10 bg-gray-200 rounded"></div></TableCell>
-                <TableCell><div className="h-4 w-20 bg-gray-200 rounded"></div></TableCell>
                 <TableCell><div className="h-6 w-16 bg-gray-200 rounded-full"></div></TableCell>
                 <TableCell className="pr-6 text-right"><div className="h-6 w-8 bg-gray-200 rounded ml-auto"></div></TableCell>
               </TableRow>
@@ -272,9 +270,6 @@ export default function ProductListTable({
                   </TableCell>
                   <TableCell className="font-semibold text-sm text-primary whitespace-nowrap">
                     {formatCurrency(product.unit_price)}
-                  </TableCell>
-                  <TableCell className="text-light-secondary-text whitespace-nowrap">
-                    {product.current_stock}
                   </TableCell> 
                   <TableCell className="whitespace-nowrap">
                     <div className="flex items-center gap-2">

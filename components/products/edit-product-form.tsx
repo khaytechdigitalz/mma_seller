@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
-import { VideoCamera, Trash } from "@/icons";
+import { Trash } from "@/icons";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { FloatingInput } from "@/components/ui/floating-input";
@@ -11,15 +11,12 @@ import { FloatingTextarea } from "@/components/ui/floating-textarea";
 import CustomFloatingSelect from "@/components/ui/custom-floating-select";
 import StatusSelect, { Option } from "@/components/ui/status-select";
 import FileUploader from "@/components/ui/file-uploader";
-import Switch from "@/components/ui/switch";
 import { apiClient } from "@/lib/axios";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
 
 // Helper to assemble asset URLs for remote pre-filled images
-const STORAGE_BASE_URL =
-  process.env.NEXT_PUBLIC_STORAGE_URL;
-  
+const STORAGE_BASE_URL = process.env.NEXT_PUBLIC_STORAGE_URL;
 
 const getFullImageUrl = (path: string | null) => {
   if (!path) return null;
@@ -31,6 +28,19 @@ const getFullImageUrl = (path: string | null) => {
 interface SelectOption {
   label: string;
   value: string;
+}
+
+interface PackageItem {
+  id: number;
+  package_id: string;
+  name: string;
+  type: string;
+  length: number;
+  width: number;
+  height: number;
+  size_unit: string;
+  weight: number;
+  weight_unit: string;
 }
 
 interface AttributeValue {
@@ -52,8 +62,8 @@ interface SelectedAttribute {
 }
 
 interface ExistingGalleryImage {
-  id: string; // Remote path or identifier
-  url: string; // Renderable URL
+  id: string;
+  url: string;
   isExisting: true;
 }
 
@@ -66,31 +76,13 @@ interface NewGalleryImage {
 
 type GalleryItem = ExistingGalleryImage | NewGalleryImage;
 
-const productTypeOptions: SelectOption[] = [
-  { label: "Physical", value: "physical" },
-  { label: "Digital", value: "digital" },
-];
-
-const taxTypeOptions: SelectOption[] = [
-  { label: "Flat ($)", value: "flat" },
-  { label: "Percentage (%)", value: "percent" },
-];
-
 const discountTypeOptions: SelectOption[] = [
-  { label: "Flat ($)", value: "flat" },
+  { label: "Flat (₦)", value: "flat" },
   { label: "Percentage (%)", value: "percent" },
-];
-
-const stockStatusOptions: SelectOption[] = [
-  { label: "In Stock", value: "in_stock" },
-  { label: "Out of Stock", value: "out_of_stock" },
-  { label: "Backorder", value: "backorder" },
 ];
 
 const statusOptions: Option[] = [
   { label: "Approved", value: "approved" },
-  { label: "Pending", value: "pending" },
-  { label: "Rejected", value: "rejected" },
 ];
 
 export default function EditProductPage() {
@@ -106,13 +98,12 @@ export default function EditProductPage() {
   const [subcategories, setSubcategories] = useState<SelectOption[]>([]);
   const [brands, setBrands] = useState<SelectOption[]>([]);
   const [attributes, setAttributes] = useState<AttributeItem[]>([]);
+  const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [isSubcategoryLoading, setIsSubcategoryLoading] = useState(false);
 
   // --- Form States ---
   const [status, setStatus] = useState<Option | null>(statusOptions[0]);
-  const [published, setPublished] = useState<boolean>(true);
-  const [isFeatured, setIsFeatured] = useState<boolean>(false);
-  const [isTodaysDeal, setIsTodaysDeal] = useState<boolean>(false);
 
   // Basic Info
   const [name, setName] = useState("");
@@ -120,9 +111,7 @@ export default function EditProductPage() {
   const [unit, setUnit] = useState("");
   const [category, setCategory] = useState("");
   const [subcategory, setSubcategory] = useState("");
-  const [productType, setProductType] = useState("physical");
   const [brand, setBrand] = useState("");
-  const [seller, setSeller] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [description, setDescription] = useState("");
 
@@ -132,17 +121,9 @@ export default function EditProductPage() {
 
   // Pricing & Stock
   const [unitPrice, setUnitPrice] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
-  const [tax, setTax] = useState("");
-  const [taxType, setTaxType] = useState("flat");
+  const [purchasePrice, setPurchasePrice] = useState(""); 
   const [discount, setDiscount] = useState("");
-  const [discountType, setDiscountType] = useState("flat");
-  const [currentStock, setCurrentStock] = useState("10");
-  const [minimumOrderQty, setMinimumOrderQty] = useState("1");
-  const [lowStockThreshold, setLowStockThreshold] = useState("5");
-  const [stockStatus, setStockStatus] = useState("in_stock");
-  const [shippingCost, setShippingCost] = useState("0");
-  const [multiplyQty, setMultiplyQty] = useState(false);
+  const [discountType, setDiscountType] = useState("flat"); 
 
   // Attributes State
   const [selectedAttributes, setSelectedAttributes] = useState<SelectedAttribute[]>([]);
@@ -153,9 +134,6 @@ export default function EditProductPage() {
   
   const [galleryImages, setGalleryImages] = useState<GalleryItem[]>([]);
   const [galleryKey, setGalleryKey] = useState<number>(0);
-  
-  const [digitalFile, setDigitalFile] = useState<File | null>(null);
-  const [existingDigitalFile, setExistingDigitalFile] = useState<string | null>(null);
 
   // SEO Meta State
   const [metaTitle, setMetaTitle] = useState("");
@@ -189,10 +167,11 @@ export default function EditProductPage() {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const [catRes, brandRes, attrRes] = await Promise.allSettled([
+        const [catRes, brandRes, attrRes, packageRes] = await Promise.allSettled([
           apiClient.get("categories?per_page=100"),
           apiClient.get("brands?per_page=500"),
           apiClient.get("attributes?per_page=100"),
+          apiClient.get("packages?per_page=100"),
         ]);
 
         if (catRes.status === "fulfilled") {
@@ -213,7 +192,9 @@ export default function EditProductPage() {
           );
         }
 
-        
+        if (packageRes.status === "fulfilled") {
+          setPackages(extractList(packageRes.value));
+        }
 
         if (attrRes.status === "fulfilled") {
           setAttributes(extractList(attrRes.value));
@@ -248,9 +229,8 @@ export default function EditProductPage() {
         setUnit(data.unit || "");
         setCategory(data.category_id ? String(data.category_id) : "");
         setSubcategory(data.sub_category_id ? String(data.sub_category_id) : "");
-        setProductType(data.product_type || "physical");
         setBrand(data.brand_id ? String(data.brand_id) : "");
-        setSeller(data.seller_id ? String(data.seller_id) : "");
+        setSelectedPackageId(data.package_id ? String(data.package_id) : "");
         setShortDescription(data.short_description || "");
         setDescription(data.description || "");
         setTags(Array.isArray(data.tags) ? data.tags : []);
@@ -258,26 +238,8 @@ export default function EditProductPage() {
         // Pricing & Inventory
         setUnitPrice(data.unit_price !== undefined ? String(data.unit_price) : "");
         setPurchasePrice(data.purchase_price !== undefined ? String(data.purchase_price) : "");
-        setTax(data.tax !== undefined ? String(data.tax) : "");
-        setTaxType(data.tax_type || "flat");
         setDiscount(data.discount !== undefined ? String(data.discount) : "");
         setDiscountType(data.discount_type || "flat");
-        setCurrentStock(data.current_stock !== undefined ? String(data.current_stock) : "0");
-        setMinimumOrderQty(data.minimum_order_qty !== undefined ? String(data.minimum_order_qty) : "1");
-        setLowStockThreshold(data.low_stock_threshold !== undefined ? String(data.low_stock_threshold) : "5");
-        setStockStatus(data.stock_status || "in_stock");
-        setShippingCost(data.shipping_cost !== undefined ? String(data.shipping_cost) : "0");
-        setMultiplyQty(Boolean(data.multiply_qty));
-
-        // Visibility & Status
-        setPublished(Boolean(data.published));
-        setIsFeatured(Boolean(data.is_featured));
-        setIsTodaysDeal(Boolean(data.is_todays_deal));
-        
-        const currentStatusOption = statusOptions.find(
-          (opt) => opt.value === data.status
-        );
-        if (currentStatusOption) setStatus(currentStatusOption);
 
         // Images & Files
         if (data.thumbnail) {
@@ -291,10 +253,6 @@ export default function EditProductPage() {
             isExisting: true,
           }));
           setGalleryImages(existingGallery);
-        }
-
-        if (data.digital_file) {
-          setExistingDigitalFile(data.digital_file);
         }
 
         // SEO Meta
@@ -445,7 +403,7 @@ export default function EditProductPage() {
     );
   };
 
-  // Submit Handler (Update API endpoint)
+  // Submit Handler
   const handleSubmit = async () => {
     if (!name || !category || !unitPrice || !sku) {
       toast.error("Please fill in all required fields (Name, Category, SKU, Unit Price).");
@@ -455,7 +413,6 @@ export default function EditProductPage() {
     setIsSubmitting(true);
     const formData = new FormData();
 
-    // Use Method Spoofing if backend uses POST for FormData updates
     formData.append("_method", "POST");
 
     // Basic Fields
@@ -464,9 +421,8 @@ export default function EditProductPage() {
     formData.append("category_id", category);
     if (subcategory) formData.append("sub_category_id", subcategory);
     if (brand) formData.append("brand_id", brand);
-    if (seller) formData.append("seller_id", seller);
-    if (productType) formData.append("product_type", productType);
     if (unit) formData.append("unit", unit);
+    if (selectedPackageId) formData.append("package_id", selectedPackageId);
     if (shortDescription) formData.append("short_description", shortDescription);
     if (description) formData.append("description", description);
 
@@ -478,22 +434,10 @@ export default function EditProductPage() {
     // Pricing & Inventory
     formData.append("unit_price", unitPrice);
     if (purchasePrice) formData.append("purchase_price", purchasePrice);
-    if (tax) formData.append("tax", tax);
-    if (taxType) formData.append("tax_type", taxType);
     if (discount) formData.append("discount", discount);
     if (discountType) formData.append("discount_type", discountType);
 
-    if (currentStock) formData.append("current_stock", currentStock);
-    if (minimumOrderQty) formData.append("minimum_order_qty", minimumOrderQty);
-    if (lowStockThreshold) formData.append("low_stock_threshold", lowStockThreshold);
-    if (stockStatus) formData.append("stock_status", stockStatus);
-    if (shippingCost) formData.append("shipping_cost", shippingCost);
-    formData.append("multiply_qty", multiplyQty ? "1" : "0");
-
-    // Flags & Status
-    formData.append("is_featured", isFeatured ? "1" : "0");
-    formData.append("is_todays_deal", isTodaysDeal ? "1" : "0");
-    formData.append("published", published ? "1" : "0");
+    // Status
     if (status?.value) formData.append("status", String(status.value));
 
     // Standalone Key-Value Attributes
@@ -508,7 +452,6 @@ export default function EditProductPage() {
       formData.append("thumbnail", thumbnail);
     }
 
-    // Process Gallery: append new binary files & track remaining existing image paths
     galleryImages.forEach((item) => {
       if (!item.isExisting) {
         formData.append("gallery_images[]", item.file);
@@ -516,8 +459,6 @@ export default function EditProductPage() {
         formData.append("existing_gallery_images[]", item.id);
       }
     });
-
-    if (digitalFile) formData.append("digital_file", digitalFile);
 
     // SEO Meta
     if (metaTitle) formData.append("meta_title", metaTitle);
@@ -596,23 +537,22 @@ export default function EditProductPage() {
               </div>
             )}
           </div>
-          <CustomFloatingSelect
-            label="Product Type"
-            options={productTypeOptions}
-            value={productType}
-            onChange={setProductType}
-          />
-          <FloatingInput
-            label="Unit (e.g. kg, pc, box)"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-          />
+          
           <CustomFloatingSelect
             label="Brand"
             options={brands}
             value={brand}
             onChange={setBrand}
-          /> 
+          />
+          <CustomFloatingSelect
+            label="Product Package (Terminal Africa)"
+            options={packages.map((pkg) => ({
+              label: `${pkg.name} (${pkg.length}x${pkg.width}x${pkg.height} ${pkg.size_unit})`,
+              value: String(pkg.id),
+            }))}
+            value={selectedPackageId}
+            onChange={setSelectedPackageId}
+          />
         </div>
 
         <div className="mt-4 sm:mt-6 space-y-4">
@@ -671,25 +611,6 @@ export default function EditProductPage() {
               onFileSelect={handleGallerySelect}
             />
           </div>
-
-          {/* Digital File Uploader */}
-          {productType === "digital" && (
-            <div className="space-y-2">
-              <FileUploader
-                title="Digital Product File"
-                maxSizeText="Max size 50 MB (ZIP, RAR, PDF, MP4)"
-                accept=".pdf,.zip,.rar,.mp3,.mp4,.epub"
-                description="Allowed *.PDF, .ZIP, .RAR, .MP4"
-                icon={<VideoCamera />}
-                onFileSelect={(file) => setDigitalFile(file)}
-              />
-              {existingDigitalFile && !digitalFile && (
-                <p className="text-xs text-gray-500 truncate">
-                  Current: <span className="font-mono text-gray-700">{existingDigitalFile}</span>
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Visual Compact Gallery Grid */}
@@ -710,7 +631,6 @@ export default function EditProductPage() {
                     fill
                     className="object-cover"
                     unoptimized
-
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button
@@ -873,51 +793,7 @@ export default function EditProductPage() {
               value={discountType}
               onChange={setDiscountType}
             />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <FloatingInput
-              label="Tax"
-              type="number"
-              value={tax}
-              onChange={(e) => setTax(e.target.value)}
-            />
-            <CustomFloatingSelect
-              label="Type"
-              options={taxTypeOptions}
-              value={taxType}
-              onChange={setTaxType}
-            />
-          </div>
-          <FloatingInput
-            label="Current Stock"
-            type="number"
-            value={currentStock}
-            onChange={(e) => setCurrentStock(e.target.value)}
-          />
-          <FloatingInput
-            label="Min Order Qty"
-            type="number"
-            value={minimumOrderQty}
-            onChange={(e) => setMinimumOrderQty(e.target.value)}
-          />
-          <FloatingInput
-            label="Low Stock Threshold"
-            type="number"
-            value={lowStockThreshold}
-            onChange={(e) => setLowStockThreshold(e.target.value)}
-          />
-          <CustomFloatingSelect
-            label="Stock Status"
-            options={stockStatusOptions}
-            value={stockStatus}
-            onChange={setStockStatus}
-          />
-          <FloatingInput
-            label="Shipping Cost ($)"
-            type="number"
-            value={shippingCost}
-            onChange={(e) => setShippingCost(e.target.value)}
-          />
+          </div> 
         </div>
       </div>
 
@@ -955,29 +831,6 @@ export default function EditProductPage() {
           onChange={(e) => setMetaDescription(e.target.value)}
           className="h-24"
         />
-      </div>
-
-      {/* Visibility & Flags */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-500/20">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Visibility & Settings</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-            <span className="text-sm font-medium text-gray-700">Published</span>
-            <Switch checked={published} onChange={setPublished} />
-          </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-            <span className="text-sm font-medium text-gray-700">Featured</span>
-            <Switch checked={isFeatured} onChange={setIsFeatured} />
-          </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-            <span className="text-sm font-medium text-gray-700">Today's Deal</span>
-            <Switch checked={isTodaysDeal} onChange={setIsTodaysDeal} />
-          </div>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-            <span className="text-sm font-medium text-gray-700">Multiply Qty</span>
-            <Switch checked={multiplyQty} onChange={setMultiplyQty} />
-          </div>
-        </div>
       </div>
 
       {/* Footer Actions */}
