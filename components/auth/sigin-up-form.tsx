@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { GoogleIcon } from "../../icons";
 import { Logo } from "@/components/ui/logo";
 import { apiClient } from "@/lib/axios";
 import { toast } from "sonner";
@@ -100,17 +99,7 @@ export function SignupForm() {
       </div>
 
       {/* Social Login */}
-      <div className="mb-8">
-        <button
-          type="button"
-          onClick={() => toast.info("Google login coming soon!")}
-          className="w-full flex items-center font-bold h-12 text-light-primary-text font-public-sans justify-center gap-2 py-3 px-4 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </button>
-      </div>
-
+     
       <div className="relative my-5">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-500/20"></div>
