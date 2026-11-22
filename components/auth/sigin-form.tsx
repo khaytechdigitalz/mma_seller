@@ -137,7 +137,7 @@ function SigninFormInner() {
           Welcome Back
         </h1>
         <p className="text-gray-600 font-public-sans text-sm max-w-sm">
-          Log in with your email and password to access the admin panel.
+          Log in with your email and password to access the vendor panel.
         </p>
       </div>
 

@@ -100,14 +100,7 @@ export function SignupForm() {
 
       {/* Social Login */}
      
-      <div className="relative my-5">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-500/20"></div>
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-light-secondary-text">Or</span>
-        </div>
-      </div>
+       
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
