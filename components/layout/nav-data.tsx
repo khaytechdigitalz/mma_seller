@@ -15,6 +15,7 @@ import {
   StarIcon,
   InvoiceIcon, 
   StoreIcon,
+  PackageIcon,
 } from "../../icons";
 
 export type NavItem = {
@@ -62,6 +63,11 @@ export const navItems: NavItem[] = [
           { label: "Bulk Upload Product", href: "/products/bulk" },
           { label: "Draft Products", href: "/products/draft" },
         ],
+      },
+      {
+        label: "Product Packaging",
+        href: "/packaging",
+        icon: <PackageIcon className="size-5.5" />,
       },
       {
         label: "Product Review",
