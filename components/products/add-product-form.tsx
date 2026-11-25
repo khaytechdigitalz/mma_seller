@@ -1,25 +1,31 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { VideoCamera, Trash } from "@/icons";
+import { Trash } from "@/icons";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { FloatingTextarea } from "@/components/ui/floating-textarea";
 import CustomFloatingSelect from "@/components/ui/custom-floating-select";
-import StatusSelect, { Option } from "@/components/ui/status-select";
 import FileUploader from "@/components/ui/file-uploader";
-// import Switch from "@/components/ui/switch";
 import { apiClient } from "@/lib/axios";
 import { toast } from "sonner";
-import { Loader2, X, Sparkles } from "lucide-react";
+import { Loader2, X, Sparkles, Tag, RefreshCw, Plus, Minus, Layers, Mic, Square } from "lucide-react";
 
-// Option Interfaces
-interface SelectOption {
-  label: string;
-  value: string;
+const STORAGE_BASE_URL = process.env.NEXT_PUBLIC_STORAGE_URL || "";
+
+const getIconUrl = (iconPath?: string | null) => {
+  if (!iconPath) return null;
+  if (iconPath.startsWith("http://") || iconPath.startsWith("https://")) return iconPath;
+  return `${STORAGE_BASE_URL}/${iconPath.replace(/^\//, "")}`;
+};
+
+interface CategoryOption {
+  id: number | string;
+  name: string;
+  icon?: string | null;
 }
 
 interface PackageItem {
@@ -35,101 +41,63 @@ interface PackageItem {
   weight_unit: string;
 }
 
-interface AttributeValue {
-  id: number;
-  attribute_id: number;
-  value: string;
-}
-
-interface AttributeItem {
-  id: number;
-  name: string;
-  type: string;
-  values: AttributeValue[];
-}
-
-interface SelectedAttribute {
-  attribute_id: number;
-  value_ids: number[];
-}
-
 interface GalleryFile {
   id: string;
   file: File;
   previewUrl: string;
 }
 
-const discountTypeOptions: SelectOption[] = [
-  { label: "Flat (₦)", value: "flat" },
-  { label: "Percentage (%)", value: "percent" },
-];
-
-const statusOptions: Option[] = [
-  { label: "Approved", value: "approved" },
-];
+const generateInitialSku = () => {
+  const randomDigits = Math.floor(100000 + Math.random() * 900000);
+  return `SKU-${randomDigits}`;
+};
 
 export default function CreateProductPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingShortAI, setIsGeneratingShortAI] = useState(false);
-  const [isGeneratingFullAI, setIsGeneratingFullAI] = useState(false);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+
+  // Voice-to-Text (Option 2: SpeechRecognition hook-style state)
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [browserSupportsSpeech, setBrowserSupportsSpeech] = useState(true);
+  const recognitionRef = useRef<any>(null);
+  const baseDescriptionRef = useRef<string>("");
 
   // Dynamic Options State
-  const [categories, setCategories] = useState<SelectOption[]>([]);
-  const [subcategories, setSubcategories] = useState<SelectOption[]>([]);
-  const [brands, setBrands] = useState<SelectOption[]>([]);
-  const [attributes, setAttributes] = useState<AttributeItem[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [packages, setPackages] = useState<PackageItem[]>([]);
-  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
-  const [isSubcategoryLoading, setIsSubcategoryLoading] = useState(false);
 
-  // --- Form States ---
-  const [status, setStatus] = useState<Option | null>(statusOptions[0]);
-
-  // Basic Info
+  // Minimalist Form States
   const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
-  const [unit, setUnit] = useState("");
+  const [sku, setSku] = useState<string>(() => generateInitialSku());
   const [category, setCategory] = useState("");
-  const [subcategory, setSubcategory] = useState("");
-  const [brand, setBrand] = useState("");
+  const [selectedPackageId, setSelectedPackageId] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [currentStock, setCurrentStock] = useState<number>(1);
   const [shortDescription, setShortDescription] = useState("");
-  const [description, setDescription] = useState("");
 
-  // Tags State
-  const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-
-  // Pricing & Stock
-  const [unitPrice, setUnitPrice] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState(""); 
-  const [discount, setDiscount] = useState("");
-  const [discountType, setDiscountType] = useState("flat"); 
-
-  // Attributes State
-  const [selectedAttributes, setSelectedAttributes] = useState<SelectedAttribute[]>([]);
-
-  // Files State
+  // Images State
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<GalleryFile[]>([]);
   const [galleryKey, setGalleryKey] = useState<number>(0);
-  const [digitalFile, setDigitalFile] = useState<File | null>(null);
 
-  // SEO Meta State
-  const [metaTitle, setMetaTitle] = useState("");
-  const [metaDescription, setMetaDescription] = useState("");
-  const [metaImage, setMetaImage] = useState<File | null>(null);
-
-  // Cleanup object URLs when component unmounts
+  // Detect browser speech support & cleanup on unmount
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognitionCtor =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      setBrowserSupportsSpeech(Boolean(SpeechRecognitionCtor));
+    }
+
     return () => {
+      recognitionRef.current?.stop();
       galleryImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
       if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
     };
   }, [galleryImages, thumbnailPreview]);
 
-  // Helper safely extracts inner array data
   const extractList = useCallback((responseValue: any) => {
     const payload = responseValue?.data;
     if (!payload) return [];
@@ -139,111 +107,128 @@ export default function CreateProductPage() {
     return [];
   }, []);
 
-  // Fetch Initial Options on Mount
+  // Fetch Categories & Packages on Mount
   useEffect(() => {
-    const fetchOptions = async () => {
+    const fetchInitialOptions = async () => {
+      setIsLoadingOptions(true);
       try {
-        const [catRes, brandRes, attrRes, packageRes] = await Promise.allSettled([
+        const [catRes, packageRes] = await Promise.allSettled([
           apiClient.get("categories?per_page=100"),
-          apiClient.get("brands?per_page=500"),
-          apiClient.get("attributes?per_page=100"),
           apiClient.get("packages?per_page=100"),
         ]);
 
         if (catRes.status === "fulfilled") {
-          setCategories(
-            extractList(catRes.value).map((c: any) => ({
-              label: c.name,
-              value: String(c.id),
-            }))
-          );
-        }
-
-        if (brandRes.status === "fulfilled") {
-          setBrands(
-            extractList(brandRes.value).map((b: any) => ({
-              label: b.name,
-              value: String(b.id),
-            }))
-          );
+          const list = extractList(catRes.value).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            icon: c.icon || c.image || c.thumbnail || null,
+          }));
+          setCategories(list);
+        } else {
+          toast.error("Failed to load categories.");
         }
 
         if (packageRes.status === "fulfilled") {
           setPackages(extractList(packageRes.value));
         }
-        
-        if (attrRes.status === "fulfilled") {
-          setAttributes(extractList(attrRes.value));
-        }
       } catch (err) {
         console.error("Failed to load options:", err);
+      } finally {
+        setIsLoadingOptions(false);
       }
     };
 
-    fetchOptions();
+    fetchInitialOptions();
   }, [extractList]);
 
-  // Fetch Subcategories when Category changes
-  useEffect(() => {
-    if (!category) {
-      setSubcategories([]);
-      setSubcategory("");
+  // Voice-to-Text Dictation Handler
+  const handleToggleVoiceDictation = () => {
+    if (isRecordingVoice) {
+      recognitionRef.current?.stop();
+      setIsRecordingVoice(false);
       return;
     }
 
-    const fetchSubcategories = async () => {
-      setIsSubcategoryLoading(true);
-      try {
-        const response = await apiClient.get("subcategories", {
-          params: { category_id: category },
-        });
-        const subData = extractList(response);
-        setSubcategories(
-          subData.map((sc: any) => ({
-            label: sc.name,
-            value: String(sc.id),
-          }))
-        );
-      } catch (err) {
-        console.error("Failed to fetch subcategories:", err);
-        setSubcategories([]);
-      } finally {
-        setIsSubcategoryLoading(false);
+    const SpeechRecognitionCtor =
+      typeof window !== "undefined"
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+
+    if (!SpeechRecognitionCtor) {
+      setBrowserSupportsSpeech(false);
+      toast.error("Voice dictation is not supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "en-NG";
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    baseDescriptionRef.current = shortDescription ? `${shortDescription.trim()} ` : "";
+
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
       }
+      setShortDescription(`${baseDescriptionRef.current}${transcript}`.trimStart());
     };
 
-    fetchSubcategories();
-  }, [category, extractList]);
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event?.error);
+      if (event?.error !== "aborted") {
+        toast.error("Unable to capture voice. Please allow microphone access.");
+      }
+      setIsRecordingVoice(false);
+    };
 
-  // AI Description Generator Handler
-  const handleGenerateAiDescription = async (fieldType: "short" | "full") => {
+    recognition.onend = () => {
+      setIsRecordingVoice(false);
+    };
+
+    recognitionRef.current = recognition;
+    setIsRecordingVoice(true);
+    recognition.start();
+    toast.info("Listening... speak your product description.");
+  };
+
+  // Stock Stepper Handlers
+  const handleDecrementStock = () => {
+    setCurrentStock((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleIncrementStock = () => {
+    setCurrentStock((prev) => prev + 1);
+  };
+
+  const handleStockInputChange = (val: string) => {
+    const parsed = parseInt(val, 10);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setCurrentStock(0);
+    } else {
+      setCurrentStock(parsed);
+    }
+  };
+
+  // Generate AI Short Description
+  const handleGenerateShortAiDescription = async () => {
     if (!name.trim()) {
       toast.error("Please enter a product name first before generating an AI description.");
       return;
     }
 
-    const descriptionType = fieldType === "short" ? "short" : "long";
-
-    if (fieldType === "short") {
-      setIsGeneratingShortAI(true);
-    } else {
-      setIsGeneratingFullAI(true);
-    }
-
+    setIsGeneratingShortAI(true);
     try {
       const response = await apiClient.post("ai/generate-description", {
-        product_name: name,
-        description_type: descriptionType,
+        product_name: name.trim(),
+        description_type: "short",
       });
 
       const generatedDesc = response?.data?.description;
       if (generatedDesc) {
-        if (fieldType === "short") {
-          setShortDescription(generatedDesc);
-        } else {
-          setDescription(generatedDesc);
-        }
-        toast.success(response?.data?.message || "AI description generated successfully!");
+        setShortDescription(generatedDesc);
+        toast.success(response?.data?.message || "Short description generated!");
       } else {
         toast.error(response?.data?.error || "Received an empty description from the AI service.");
       }
@@ -251,25 +236,7 @@ export default function CreateProductPage() {
       console.error("Failed to generate AI description:", error);
       toast.error(error?.response?.data?.error || "Failed to generate AI description.");
     } finally {
-      if (fieldType === "short") {
-        setIsGeneratingShortAI(false);
-      } else {
-        setIsGeneratingFullAI(false);
-      }
-    }
-  };
-
-  // Auto-generate SKU from product name if empty
-  const handleNameChange = (val: string) => {
-    setName(val);
-    if (!sku) {
-      const generatedSku = val
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 8);
-      if (generatedSku) {
-        setSku(`${generatedSku}-${Math.floor(1000 + Math.random() * 9000)}`);
-      }
+      setIsGeneratingShortAI(false);
     }
   };
 
@@ -294,7 +261,7 @@ export default function CreateProductPage() {
     }
 
     const newGalleryItem: GalleryFile = {
-      id: `${file.name}-${Date.now()}`,
+      id: `${file.name}-${Date.now()}-${Math.random()}`,
       file,
       previewUrl: URL.createObjectURL(file),
     };
@@ -313,104 +280,35 @@ export default function CreateProductPage() {
     });
   };
 
-  // Tag Handlers
-  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      const trimmed = tagInput.trim().replace(/^,|,$/g, "");
-      if (trimmed && !tags.includes(trimmed)) {
-        setTags([...tags, trimmed]);
-        setTagInput("");
-      }
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
-  };
-
-  // Attribute Handlers
-  const handleAddAttribute = (attrId: string) => {
-    const id = Number(attrId);
-    if (!id || selectedAttributes.some((a) => a.attribute_id === id)) return;
-    setSelectedAttributes([...selectedAttributes, { attribute_id: id, value_ids: [] }]);
-  };
-
-  const handleRemoveAttribute = (attrId: number) => {
-    setSelectedAttributes(selectedAttributes.filter((a) => a.attribute_id !== attrId));
-  };
-
-  const handleToggleAttributeValue = (attrId: number, valueId: number, isSingleSelect: boolean) => {
-    setSelectedAttributes((prev) =>
-      prev.map((attr) => {
-        if (attr.attribute_id !== attrId) return attr;
-        if (isSingleSelect) {
-          return { ...attr, value_ids: [valueId] };
-        }
-        const exists = attr.value_ids.includes(valueId);
-        return {
-          ...attr,
-          value_ids: exists
-            ? attr.value_ids.filter((v) => v !== valueId)
-            : [...attr.value_ids, valueId],
-        };
-      })
-    );
-  };
-
   // Submit Handler
-  const handleSubmit = async () => {
-    if (!name || !category || !unitPrice || !sku) {
-      toast.error("Please fill in all required fields (Name, Category, SKU, Unit Price).");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isRecordingVoice) {
+      recognitionRef.current?.stop();
+      setIsRecordingVoice(false);
+    }
+
+    if (!name.trim() || !category) {
+      toast.error("Please enter a product name and select a category.");
       return;
     }
 
     setIsSubmitting(true);
     const formData = new FormData();
 
-    // Basic Fields
-    formData.append("name", name);
-    formData.append("sku", sku);
-    formData.append("category_id", category);
-    if (subcategory) formData.append("sub_category_id", subcategory);
-    if (brand) formData.append("brand_id", brand); 
-    if (unit) formData.append("unit", unit);
+    formData.append("name", name.trim());
+    formData.append("sku", sku || generateInitialSku());
+    formData.append("category_id", String(category));
+    formData.append("current_stock", String(currentStock));
     if (selectedPackageId) formData.append("package_id", selectedPackageId);
-    if (shortDescription) formData.append("short_description", shortDescription);
-    if (description) formData.append("description", description);
+    if (purchasePrice !== "") formData.append("purchase_price", purchasePrice);
+    if (shortDescription.trim()) formData.append("short_description", shortDescription.trim());
 
-    // Tags
-    tags.forEach((tag, idx) => {
-      formData.append(`tags[${idx}]`, tag);
-    });
-
-    // Pricing & Inventory
-    formData.append("unit_price", unitPrice);
-    if (purchasePrice) formData.append("purchase_price", purchasePrice);
-    if (discount) formData.append("discount", discount);
-    if (discountType) formData.append("discount_type", discountType);
-
-    // Flags & Status
-    if (status?.value) formData.append("status", String(status.value));
-
-    // Standalone Key-Value Attributes
-    selectedAttributes.forEach((attr, attrIdx) => {
-      attr.value_ids.forEach((valId, valIdx) => {
-        formData.append(`attributes[${attrIdx}][${valIdx}]`, String(valId));
-      });
-    });
-
-    // File Uploads
     if (thumbnail) formData.append("thumbnail", thumbnail);
     galleryImages.forEach((item) => {
       formData.append("gallery_images[]", item.file);
     });
-    if (digitalFile) formData.append("digital_file", digitalFile);
-
-    // SEO Meta
-    if (metaTitle) formData.append("meta_title", metaTitle);
-    if (metaDescription) formData.append("meta_description", metaDescription);
-    if (metaImage) formData.append("meta_image", metaImage);
 
     try {
       await apiClient.post("products", formData, {
@@ -426,138 +324,187 @@ export default function CreateProductPage() {
     }
   };
 
-  const unselectedAttributes = attributes.filter(
-    (attr) => !selectedAttributes.some((sa) => sa.attribute_id === attr.id)
-  );
-
   return (
-    <div className="w-full bg-white rounded-2xl mx-auto p-4 sm:p-6 space-y-6">
+    <form
+      onSubmit={handleSubmit}
+      className="w-full bg-white rounded-2xl p-4 sm:p-6 space-y-6 border border-gray-500/20 shadow-2xs"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <PageHeader title="Create Product" backHref="/products" />
-        <div className="w-32">
-          <StatusSelect value={status} onChange={setStatus} options={statusOptions} />
+      <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+        <PageHeader title="Quick Add Product" backHref="/products" />
+        <div className="flex items-center gap-2 text-xs font-mono bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg">
+          <span>{sku}</span>
+          <button
+            type="button"
+            onClick={() => setSku(generateInitialSku())}
+            className="text-gray-500 hover:text-gray-900 transition-colors"
+            title="Regenerate SKU"
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
         </div>
       </div>
 
-      {/* Basic Information */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-500/20">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 sm:mb-6">Basic Information</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-          <FloatingInput
-            label="Product Name *"
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
-          />
-          <FloatingInput
-            label="SKU *"
-            value={sku}
-            onChange={(e) => setSku(e.target.value)}
-          />
-          <CustomFloatingSelect
-            label="Category *"
-            options={categories}
-            value={category}
-            onChange={setCategory}
-          />
-          <div className="relative">
-            <CustomFloatingSelect
-              label={isSubcategoryLoading ? "Loading..." : "Subcategory"}
-              options={subcategories}
-              value={subcategory}
-              onChange={setSubcategory}
-            />
-            {isSubcategoryLoading && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <Loader2 className="size-4 animate-spin text-primary" />
+      {/* Row 1: Name & Purchase Price */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FloatingInput
+          label="Product Name *"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <FloatingInput
+          label="Purchase Price (₦)"
+          type="number"
+          step="any"
+          min="0"
+          value={purchasePrice}
+          onChange={(e) => setPurchasePrice(e.target.value)}
+        />
+      </div>
+
+      {/* Row 2: Current Stock & Product Package */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+        {/* Current Stock Stepper Card */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200/90 bg-gradient-to-r from-gray-50/90 to-white px-4 py-2.5 shadow-2xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Layers className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900">Current Stock *</span>
+                <span
+                  className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                    currentStock > 0
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200/70"
+                      : "bg-amber-50 text-amber-700 border border-amber-200/70"
+                  }`}
+                >
+                  {currentStock > 0 ? `${currentStock} in stock` : "Out of stock"}
+                </span>
               </div>
-            )}
-          </div>
-          
-           
-          <CustomFloatingSelect
-            label="Brand"
-            options={brands}
-            value={brand}
-            onChange={setBrand}
-          /> 
-          <CustomFloatingSelect
-            label="Product Package (Specify Package Dimensions)"
-            options={packages.map((pkg) => ({
-              label: `${pkg.name} (${pkg.length}x${pkg.width}x${pkg.height} ${pkg.size_unit})`,
-              value: String(pkg.id),
-            }))}
-            value={selectedPackageId}
-            onChange={setSelectedPackageId}
-          />
-        </div>
-
-        <div className="mt-4 sm:mt-6 space-y-6">
-          {/* Short Description with AI Button */}
-          <div className="space-y-2">
-            <FloatingTextarea
-              label="Short Description"
-              value={shortDescription}
-              onChange={(e) => setShortDescription(e.target.value)}
-              className="h-24"
-            />
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleGenerateAiDescription("short")}
-                disabled={isGeneratingShortAI}
-                className="gap-1.5 text-xs font-medium"
-              >
-                {isGeneratingShortAI ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="size-3.5 text-primary" />
-                )}
-                {isGeneratingShortAI ? "Generating..." : "Generate AI Description"}
-              </Button>
+              <p className="text-xs text-gray-500 truncate">Available units ready for sale</p>
             </div>
           </div>
 
-          {/* Full Description with AI Button */}
-          <div className="space-y-2">
-            <FloatingTextarea
-              label="Full Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="h-36"
+          <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl p-1 shadow-2xs shrink-0">
+            <button
+              type="button"
+              onClick={handleDecrementStock}
+              disabled={currentStock <= 0}
+              className="size-8 rounded-lg flex items-center justify-center text-gray-700 hover:bg-gray-100 active:scale-95 disabled:opacity-35 disabled:pointer-events-none transition-all"
+              aria-label="Decrease stock"
+            >
+              <Minus className="size-4" />
+            </button>
+
+            <input
+              type="number"
+              min="0"
+              value={currentStock}
+              onChange={(e) => handleStockInputChange(e.target.value)}
+              className="w-14 text-center text-sm font-bold text-gray-900 bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              aria-label="Current stock quantity"
             />
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleGenerateAiDescription("full")}
-                disabled={isGeneratingFullAI}
-                className="gap-1.5 text-xs font-medium"
-              >
-                {isGeneratingFullAI ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="size-3.5 text-primary" />
-                )}
-                {isGeneratingFullAI ? "Generating..." : "Generate AI Description"}
-              </Button>
-            </div>
+
+            <button
+              type="button"
+              onClick={handleIncrementStock}
+              className="size-8 rounded-lg flex items-center justify-center bg-primary text-white hover:bg-primary/90 active:scale-95 transition-all shadow-2xs"
+              aria-label="Increase stock"
+            >
+              <Plus className="size-4" />
+            </button>
           </div>
         </div>
+
+        {/* Product Package Select */}
+        <CustomFloatingSelect
+          label="Product Package (Specify Dimensions)"
+          options={packages.map((pkg) => ({
+            label: `${pkg.name} (${pkg.length}×${pkg.width}×${pkg.height} ${pkg.size_unit})`,
+            value: String(pkg.id),
+          }))}
+          value={selectedPackageId}
+          onChange={setSelectedPackageId}
+        />
       </div>
 
-      {/* Media Uploads */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-500/20 space-y-6">
-        <h2 className="text-lg font-bold text-gray-900">Media</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Thumbnail Uploader */}
-          <div className="space-y-3">
+      {/* Category Radio Cards with Icon */}
+      <div className="space-y-3">
+        <label className="block text-sm font-bold text-gray-900">
+          Select Category *
+        </label>
+
+        {isLoadingOptions ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-gray-500">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            <span>Loading categories...</span>
+          </div>
+        ) : categories.length === 0 ? (
+          <p className="text-xs text-gray-500 italic py-2">No categories available.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {categories.map((cat) => {
+              const catValue = String(cat.id);
+              const isSelected = category === catValue;
+              const iconUrl = getIconUrl(cat.icon);
+
+              return (
+                <label
+                  key={catValue}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    isSelected
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="product_category"
+                    value={catValue}
+                    checked={isSelected}
+                    onChange={() => setCategory(catValue)}
+                    className="sr-only"
+                  />
+
+                  <div className="size-9 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200/70">
+                    {iconUrl ? (
+                      <Image
+                        src={iconUrl}
+                        alt={cat.name}
+                        width={24}
+                        height={24}
+                        className="size-6 object-contain"
+                        unoptimized
+                      />
+                    ) : (
+                      <Tag className="size-4 text-gray-500" />
+                    )}
+                  </div>
+
+                  <span
+                    className={`text-xs sm:text-sm font-semibold truncate ${
+                      isSelected ? "text-primary" : "text-gray-800"
+                    }`}
+                  >
+                    {cat.name}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Images (Thumbnail & Gallery) */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-bold text-gray-900">Product Images</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2.5">
             <FileUploader
-              title="Thumbnail Photo *"
-              maxSizeText="Max size 3.1 MB (JPEG, PNG, WEBP)"
+              title="Main Image (Thumbnail)"
+              maxSizeText="Max 3.1 MB (JPEG, PNG, WEBP)"
               onFileSelect={handleThumbnailSelect}
             />
             {thumbnailPreview && (
@@ -572,7 +519,8 @@ export default function CreateProductPage() {
                 <button
                   type="button"
                   onClick={() => handleThumbnailSelect(null)}
-                  className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 bg-red-500/90 text-white p-0.5 rounded-full"
+                  title="Remove image"
                 >
                   <X className="size-3" />
                 </button>
@@ -580,230 +528,99 @@ export default function CreateProductPage() {
             )}
           </div>
 
-          {/* Gallery Images Uploader with Reset Key */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <FileUploader
               key={galleryKey}
-              title={`Gallery Images (${galleryImages.length}/5)`}
-              maxSizeText="Max size 3.1 MB each"
+              title={`Additional Images (${galleryImages.length}/5)`}
+              maxSizeText="Max 3.1 MB each"
               onFileSelect={handleGallerySelect}
             />
           </div>
         </div>
 
-        {/* Visual Compact Gallery Grid */}
         {galleryImages.length > 0 && (
-          <div className="space-y-2">
-            <span className="text-xs font-semibold text-gray-600">
-              Gallery Previews
-            </span>
-            <div className="flex flex-wrap gap-3">
-              {galleryImages.map((item) => (
-                <div
-                  key={item.id}
-                  className="relative group size-20 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0"
+          <div className="flex flex-wrap gap-3 pt-1">
+            {galleryImages.map((item) => (
+              <div
+                key={item.id}
+                className="relative group size-16 rounded-lg border border-gray-200 overflow-hidden bg-gray-50"
+              >
+                <Image
+                  src={item.previewUrl}
+                  alt="Gallery Image"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveGalleryImage(item.id)}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                  title="Delete Image"
                 >
-                  <Image
-                    src={item.previewUrl}
-                    alt="Gallery Image"
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveGalleryImage(item.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-md transition-transform transform hover:scale-105"
-                      title="Delete Image"
-                    >
-                      <Trash className="size-3.5" />
-                    </button>
-                  </div>
-                  <span className="absolute bottom-0 inset-x-0 truncate text-[9px] bg-black/60 text-white px-1 py-0.5 text-center">
-                    {item.file.name}
-                  </span>
-                </div>
-              ))}
-            </div>
+                  <Trash className="size-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Attributes Section */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-500/20 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Product Attributes</h2>
-          {unselectedAttributes.length > 0 && (
-            <div className="w-56">
-              <CustomFloatingSelect
-                label="Add Attribute"
-                options={unselectedAttributes.map((a) => ({
-                  label: a.name,
-                  value: String(a.id),
-                }))}
-                value=""
-                onChange={handleAddAttribute}
-              />
-            </div>
-          )}
-        </div>
-
-        {selectedAttributes.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No attributes added yet.</p>
-        ) : (
-          <div className="space-y-4">
-            {selectedAttributes.map((selectedAttr) => {
-              const attrDetail = attributes.find((a) => a.id === selectedAttr.attribute_id);
-              if (!attrDetail) return null;
-
-              const isSingleSelect =
-                attrDetail.type === "radio" || attrDetail.type === "dropdown";
-
-              return (
-                <div
-                  key={attrDetail.id}
-                  className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm text-gray-800">
-                      {attrDetail.name}{" "}
-                      <span className="text-xs text-gray-500 font-normal">
-                        ({attrDetail.type})
-                      </span>
-                    </span>
-                    <Button
-                      variant="icon"
-                      size="xs"
-                      onClick={() => handleRemoveAttribute(attrDetail.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {attrDetail.values?.map((val) => {
-                      const isSelected = selectedAttr.value_ids.includes(val.id);
-                      return (
-                        <button
-                          key={val.id}
-                          type="button"
-                          onClick={() =>
-                            handleToggleAttributeValue(attrDetail.id, val.id, isSingleSelect)
-                          }
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                            isSelected
-                              ? "bg-primary text-white border-primary"
-                              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                          }`}
-                        >
-                          {val.value}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Tags */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-500/20">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 sm:mb-6">Tags</h2>
-        <div className="space-y-4">
-          <FloatingInput
-            label="Type tag and press Enter or comma"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleAddTag}
-          />
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full border border-gray-300 bg-gray-50 text-gray-700"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="text-gray-400 hover:text-red-500"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Pricing & Stock */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-500/20 space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">Pricing & Inventory</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <FloatingInput
-            label="Unit Price ($) *"
-            type="number"
-            value={unitPrice}
-            onChange={(e) => setUnitPrice(e.target.value)}
-          />
-          <FloatingInput
-            label="Purchase Price ($)"
-            type="number"
-            value={purchasePrice}
-            onChange={(e) => setPurchasePrice(e.target.value)}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <FloatingInput
-              label="Discount"
-              type="number"
-              value={discount}
-              onChange={(e) => setDiscount(e.target.value)}
-            />
-            <CustomFloatingSelect
-              label="Type"
-              options={discountTypeOptions}
-              value={discountType}
-              onChange={setDiscountType}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* SEO Meta */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-500/20 space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">SEO Meta Settings</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FloatingInput
-            label="Meta Title"
-            value={metaTitle}
-            onChange={(e) => setMetaTitle(e.target.value)}
-          />
-          <FileUploader
-            title="Meta Image"
-            maxSizeText="Max size 2.0 MB"
-            onFileSelect={(file) => setMetaImage(file)}
-          />
-        </div>
+      {/* Short Description + Voice-to-Text & AI Generator */}
+      <div className="space-y-2">
         <FloatingTextarea
-          label="Meta Description"
-          value={metaDescription}
-          onChange={(e) => setMetaDescription(e.target.value)}
+          label="Short Description"
+          value={shortDescription}
+          onChange={(e) => setShortDescription(e.target.value)}
           className="h-24"
         />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {browserSupportsSpeech && (
+            <Button
+              type="button"
+             // variant={isRecordingVoice ? "destructive" : "outline"}
+              size="sm"
+              onClick={handleToggleVoiceDictation}
+              className="gap-1.5 text-xs font-medium"
+            >
+              {isRecordingVoice ? (
+                <>
+                  <Square className="size-3.5 fill-current animate-pulse" />
+                  Stop Voice
+                </>
+              ) : (
+                <>
+                  <Mic className="size-3.5 text-white" />
+                  Voice to Text
+                </>
+              )}
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleGenerateShortAiDescription}
+            disabled={isGeneratingShortAI}
+            className="gap-1.5 text-xs font-medium"
+          >
+            {isGeneratingShortAI ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="size-3.5 text-primary" />
+            )}
+            {isGeneratingShortAI ? "Generating..." : "Generate AI Description"}
+          </Button>
+        </div>
       </div>
 
-      {/* Footer Actions */}
-      <div className="flex items-center justify-end gap-4 pt-4 sm:pt-6 border-t border-gray-200">
-        <Button variant="outline" onClick={() => router.push("/products")}>
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+        <Button type="button" variant="outline" onClick={() => router.push("/products")}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? (
             <>
               <Loader2 className="size-4 animate-spin mr-2" />
@@ -814,6 +631,6 @@ export default function CreateProductPage() {
           )}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

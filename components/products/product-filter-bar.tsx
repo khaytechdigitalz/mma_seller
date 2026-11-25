@@ -58,7 +58,6 @@ export default function ProductFilterBar({
   // Dynamic Options State
   const [categories, setCategories] = useState<Option[]>([]);
   const [subcategories, setSubcategories] = useState<Option[]>([]);
-  const [brands, setBrands] = useState<Option[]>([]);
 
   // Selected Option States
   const [selectedCategory, setSelectedCategory] = useState<Option | null>(null);
@@ -79,9 +78,8 @@ export default function ProductFilterBar({
 useEffect(() => {
   const fetchDropdownData = async () => {
     try {
-      const [categoriesRes, brandsRes] = await Promise.allSettled([
+      const [categoriesRes] = await Promise.allSettled([
         apiClient.get("categories?per_page=100"),
-        apiClient.get("brands?per_page=500"),
       ]);
 
       // Helper to safely extract paginated array data
@@ -107,16 +105,7 @@ useEffect(() => {
         );
       }
 
-      if (brandsRes.status === "fulfilled") {
-        const brandList = extractList(brandsRes.value);
-        setBrands(
-          brandList.map((b: { id: number | string; name: string }) => ({
-            label: b.name,
-            value: String(b.id),
-          }))
-        );
-      }
-
+      
     
     } catch (err) {
       console.error("Failed to load filter options:", err);
@@ -272,15 +261,6 @@ useEffect(() => {
               <Loader2 className="size-4 animate-spin text-primary" />
             </div>
           )}
-        </div>
-
-        <div className="w-full">
-          <CustomSelect
-            options={brands}
-            value={selectedBrand}
-            onChange={(opt) => setSelectedBrand(opt)}
-            placeholder="Brand"
-          />
         </div> 
 
         <div className="w-full">
